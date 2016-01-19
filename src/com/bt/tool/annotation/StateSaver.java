@@ -1,15 +1,13 @@
 package com.bt.tool.annotation;
 
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Properties;
 import java.util.Set;
 
 /**
@@ -25,6 +23,7 @@ public class StateSaver {
     };
 
     private ArrayList<Field> mFields = new ArrayList<>();
+    private HashMap<String, Serializable> mSerializableMap = new HashMap<>();
     private Object mContext;
     private String mSavePath;
 
@@ -52,15 +51,16 @@ public class StateSaver {
     }
 
     public void save() {
-        Properties p = new Properties();
+        save(mSavePath);
+    }
+
+    public void save(String path) {
         for (Field field : mFields) {
             for (Class stateClass : mSupportedSaveState) {
                 if (field.isAnnotationPresent(stateClass)) {
                     try {
                         field.setAccessible(true);
-                        processSave(field, p, stateClass);
-                    } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
-                        e.printStackTrace();
+                        processSave(field, stateClass);
                     } catch (Exception e) {
                         e.printStackTrace();
                     }
@@ -68,19 +68,15 @@ public class StateSaver {
                 }
             }
         }
-        try {
-            p.store(new FileOutputStream(mSavePath), "create by StateSaver");
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        serialize(path);
     }
 
     public void load() {
-        Properties p = new Properties();
-        try {
-            p.load(new FileInputStream(mSavePath));
-        } catch (IOException e) {
-            e.printStackTrace();
+        load(mSavePath);
+    }
+
+    public void load(String path) {
+        if (!deserialize(path) || mSerializableMap.size() == 0) {
             return;
         }
         for (Field field : mFields) {
@@ -88,9 +84,7 @@ public class StateSaver {
                 if (field.isAnnotationPresent(stateClass)) {
                     try {
                         field.setAccessible(true);
-                        processLoad(field, p, stateClass);
-                    } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
-                        e.printStackTrace();
+                        processLoad(field, stateClass);
                     } catch (Exception e) {
                         e.printStackTrace();
                     }
@@ -100,12 +94,12 @@ public class StateSaver {
         }
     }
 
-    protected void processSave(Field field, Properties p, Class stateClass) throws NoSuchMethodException, IllegalAccessException, InvocationTargetException {
+    protected void processSave(Field field, Class stateClass) throws NoSuchMethodException, IllegalAccessException, InvocationTargetException {
         Object obj = field.get(mContext);
         String name = field.getName();
 
         if (stateClass == FieldSaveState.class) {
-            p.setProperty(name, String.valueOf(obj));
+            putSerializable(name, obj);
             return;
         }
 
@@ -113,51 +107,115 @@ public class StateSaver {
         Method annoGetter = annotation.annotationType().getMethod("getter");
         Method setMethod = obj.getClass().getMethod((String) annoGetter.invoke(annotation));
         Object value = setMethod.invoke(obj);
-        p.setProperty(name, value.toString());
+        putSerializable(name, value);
     }
 
-    protected void processLoad(Field field, Properties p, Class stateClass) throws NoSuchMethodException, IllegalAccessException, InvocationTargetException {
-        String value = p.getProperty(field.getName());
+    protected void processLoad(Field field, Class stateClass) throws NoSuchMethodException, IllegalAccessException, InvocationTargetException {
+        Object value = mSerializableMap.get(field.getName());
         if (value == null) {
             return;
         }
         if (stateClass == FieldSaveState.class) {
             if (isWrapperType(field.getType())) {
-                field.set(mContext, field.getType().getMethod("valueOf").invoke(field, value));
+                field.set(mContext, value);
+            } else if (field.getType() == Object.class || field.getType() == Object[].class) {
+                field.set(mContext, value);
             } else if (field.getType() == int.class) {
-                field.setInt(mContext, Integer.valueOf(value));
+                field.setInt(mContext, (Integer) value);
             } else if (field.getType() == long.class) {
-                field.setLong(mContext, Long.valueOf(value));
+                field.setLong(mContext, (Long) value);
             } else if (field.getType() == boolean.class) {
-                field.setBoolean(mContext, Boolean.valueOf(value));
+                field.setBoolean(mContext, (Boolean) value);
             } else if (field.getType() == short.class) {
-                field.setShort(mContext, Short.valueOf(value));
+                field.setShort(mContext, (Short) value);
             } else if (field.getType() == byte.class) {
-                field.setByte(mContext, Byte.valueOf(value));
+                field.setByte(mContext, (Byte) value);
             } else if (field.getType() == char.class) {
-                field.setChar(mContext, value.charAt(0));
+                field.setChar(mContext, (Character) value);
             } else if (field.getType() == double.class) {
-                field.setDouble(mContext, Double.valueOf(value));
+                field.setDouble(mContext, (Double) value);
             } else if (field.getType() == float.class) {
-                field.setFloat(mContext, Float.valueOf(value));
+                field.setFloat(mContext, (Float) value);
+            } else {
+                field.set(mContext, value);
             }
             return;
         }
 
         Object obj = field.get(mContext);
         Annotation annotation = field.getAnnotation(stateClass);
-        Method typper = annotation.annotationType().getMethod("type");
-        SaveState.Type type = (SaveState.Type) typper.invoke(annotation);
-
         Method annoSetter = annotation.annotationType().getMethod("setter");
-        Method setter;
-        if (type == SaveState.Type.BOOL) {
-            setter = obj.getClass().getMethod((String) annoSetter.invoke(annotation), boolean.class);
-            setter.invoke(obj, Boolean.valueOf(value.toString()));
-        } else if (type == SaveState.Type.STRING) {
-            setter = obj.getClass().getMethod((String) annoSetter.invoke(annotation), String.class);
-            setter.invoke(obj, value.toString());
+        String setterName = (String) annoSetter.invoke(annotation);
+        Method setter = null;
+        for (Method method : obj.getClass().getMethods()) {
+            if (method.getParameterCount() == 1 && method.getName().equals(setterName)) {
+                setter = method;
+                break;
+            }
         }
+        if (setter != null) {
+            setter.invoke(obj, value);
+        }
+    }
+
+    // ----------------------------------------------------------------------
+
+    private void putSerializable(String key, Object obj) {
+        if (obj instanceof Serializable && mSerializableMap != null) {
+            mSerializableMap.put(key, (Serializable) obj);
+        }
+    }
+
+    private boolean serialize(String path) {
+        FileOutputStream fos = null;
+        ObjectOutputStream oos = null;
+        try {
+            fos = new FileOutputStream(path);
+            oos = new ObjectOutputStream(fos);
+            oos.writeObject(mSerializableMap);
+            oos.close();
+            return true;
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        } finally {
+            try {
+                if (fos != null) {
+                    fos.close();
+                }
+                if (oos != null) {
+                    oos.close();
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        return false;
+    }
+
+    private boolean deserialize(String path) {
+        FileInputStream fos = null;
+        ObjectInputStream oos = null;
+        try {
+            fos = new FileInputStream(path);
+            oos = new ObjectInputStream(fos);
+            mSerializableMap = (HashMap<String, Serializable>) oos.readObject();
+            oos.close();
+            return true;
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        } finally {
+            try {
+                if (fos != null) {
+                    fos.close();
+                }
+                if (oos != null) {
+                    oos.close();
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        return false;
     }
 
     // ----------------------------------------------------------------------

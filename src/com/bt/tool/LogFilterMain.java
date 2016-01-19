@@ -58,10 +58,6 @@ public class LogFilterMain extends JFrame implements INotiEvent {
     static final int STATUS_PARSING = 2;
     static final int STATUS_READY = 4;
 
-    final int L = SwingConstants.LEFT;
-    final int C = SwingConstants.CENTER;
-    final int R = SwingConstants.RIGHT;
-
     private static final String DIFF_PROGRAM_PATH = "C:\\Program Files\\KDiff3\\kdiff3.exe";
 
     JTabbedPane m_tpTab;
@@ -75,22 +71,28 @@ public class LogFilterMain extends JFrame implements INotiEvent {
     ConcurrentHashMap<Integer, Integer> m_hmErrorFiltered;
     ILogParser m_iLogParser;
     LogTable m_tbLogTable;
-    // com.bt.tool.TagTable m_tbTagTable;
     JScrollPane m_scrollVBar;
-    // JScrollPane m_scrollVTagBar;
     LogFilterTableModel m_tmLogTableModel;
-    // com.bt.tool.TagFilterTableModel m_tmTagTableModel;
     boolean m_bUserFilter;
 
     // Word Filter, tag filter
     JTextField m_tfSearch;
+    @TextFieldSaveState
     JTextField m_tfHighlight;
+
+    @TextFieldSaveState
     JTextField m_tfFindWord;
+    @TextFieldSaveState
     JTextField m_tfRemoveWord;
+    @TextFieldSaveState
     JTextField m_tfShowTag;
+    @TextFieldSaveState
     JTextField m_tfRemoveTag;
+    @TextFieldSaveState
     JTextField m_tfShowPid;
+    @TextFieldSaveState
     JTextField m_tfShowTid;
+    @TextFieldSaveState
     JTextField m_tfBookmarkTag;
 
     // Device
@@ -121,22 +123,37 @@ public class LogFilterMain extends JFrame implements INotiEvent {
     private JCheckBox m_chkEnableTimeTag;
 
     // Log filter
+    @CheckBoxSaveState
     JCheckBox m_chkVerbose;
+    @CheckBoxSaveState
     JCheckBox m_chkDebug;
+    @CheckBoxSaveState
     JCheckBox m_chkInfo;
+    @CheckBoxSaveState
     JCheckBox m_chkWarn;
+    @CheckBoxSaveState
     JCheckBox m_chkError;
+    @CheckBoxSaveState
     JCheckBox m_chkFatal;
 
     // Show column
+    @CheckBoxSaveState
     JCheckBox m_chkClmBookmark;
+    @CheckBoxSaveState
     JCheckBox m_chkClmLine;
+    @CheckBoxSaveState
     JCheckBox m_chkClmDate;
+    @CheckBoxSaveState
     JCheckBox m_chkClmTime;
+    @CheckBoxSaveState
     JCheckBox m_chkClmLogLV;
+    @CheckBoxSaveState
     JCheckBox m_chkClmPid;
+    @CheckBoxSaveState
     JCheckBox m_chkClmThread;
+    @CheckBoxSaveState
     JCheckBox m_chkClmTag;
+    @CheckBoxSaveState
     JCheckBox m_chkClmMessage;
 
     @TextFieldSaveState
@@ -163,12 +180,18 @@ public class LogFilterMain extends JFrame implements INotiEvent {
     Object FILTER_LOCK;
     volatile int m_nChangedFilter;
     int m_nFilterLogLV;
+    @FieldSaveState
     int m_nWinWidth = DEFAULT_WIDTH;
+    @FieldSaveState
     int m_nWinHeight = DEFAULT_HEIGHT;
     int m_nLastWidth;
     int m_nLastHeight;
+    @FieldSaveState
     int m_nWindState;
     static RecentFileMenu m_recentMenu;
+
+    @FieldSaveState
+    int[] m_colWidths = LogFilterTableModel.DEFULT_WIDTH;
 
     @FieldSaveState
     private String m_strLastDir;
@@ -308,7 +331,6 @@ public class LogFilterMain extends JFrame implements INotiEvent {
         if (m_thFilterParse != null)
             m_thFilterParse.interrupt();
 
-        saveFilter(INI_FILE);
         saveColor();
         mStateSaver.save();
         System.exit(0);
@@ -347,10 +369,8 @@ public class LogFilterMain extends JFrame implements INotiEvent {
         mStateSaver.load();
 
         loadUI();
-        loadFilter(INI_FILE);
         loadColor();
         loadCmd();
-        loadCheckboxes();
         initDiffService();
 
         setSize(m_nWinWidth, m_nWinHeight);
@@ -362,6 +382,7 @@ public class LogFilterMain extends JFrame implements INotiEvent {
     }
 
     private void loadUI() {
+        loadTableColumnState();
         getLogTable().setFontSize(Integer.parseInt(m_tfFontSize
                 .getText()));
         updateTable(-1, false);
@@ -370,7 +391,7 @@ public class LogFilterMain extends JFrame implements INotiEvent {
     final String INI_FILE = CONFIG_BASE_DIR + File.separator + "LogFilter.ini";
     final String INI_FILE_CMD = CONFIG_BASE_DIR + File.separator + "LogFilterCmd.ini";
     final String INI_FILE_COLOR = CONFIG_BASE_DIR + File.separator + "LogFilterColor.ini";
-    final String INI_FILE_STATE = CONFIG_BASE_DIR + File.separator + "LogFilterState.ini";
+    final String INI_FILE_STATE = CONFIG_BASE_DIR + File.separator + "LogFilterState.ser";
     final String INI_LAST_DIR = "LAST_DIR";
     final String INI_CMD_COUNT = "CMD_COUNT";
     final String INI_CMD = "CMD_";
@@ -528,76 +549,6 @@ public class LogFilterMain extends JFrame implements INotiEvent {
         }
     }
 
-    void loadFilter(String savePath) {
-        try {
-            Properties p = new Properties();
-            p.load(new FileInputStream(savePath));
-
-//            m_strLastDir = p.getProperty(INI_LAST_DIR);
-//            String strFontType = p.getProperty(INI_FONT_TYPE);
-//            if (strFontType != null && strFontType.length() > 0)
-//                m_jcFontType.setSelectedItem(p.getProperty(INI_FONT_TYPE));
-            m_tfFindWord.setText(p.getProperty(INI_WORD_FIND));
-            m_tfRemoveWord.setText(p.getProperty(INI_WORD_REMOVE));
-            m_tfShowTag.setText(p.getProperty(INI_TAG_SHOW));
-            m_tfRemoveTag.setText(p.getProperty(INI_TAG_REMOVE));
-            m_tfShowPid.setText(p.getProperty(INI_PID_SHOW));
-            m_tfShowTid.setText(p.getProperty(INI_TID_SHOW));
-            m_tfHighlight.setText(p.getProperty(INI_HIGHLIGHT));
-            m_nWinWidth = Integer.parseInt(p.getProperty(INI_WIDTH));
-            m_nWinHeight = Integer.parseInt(p.getProperty(INI_HEIGHT));
-            m_nWindState = Integer.parseInt(p.getProperty(INI_WINDOW_STATE));
-
-            for (int nIndex = 0; nIndex < LogFilterTableModel.COMUMN_MAX; nIndex++) {
-                LogFilterTableModel.setColumnWidth(nIndex,
-                        Integer.parseInt(p.getProperty(INI_COMUMN + nIndex)));
-            }
-        } catch (Exception e) {
-            System.out.println(e);
-        }
-    }
-
-    void saveFilter(String savePath) {
-        try {
-            m_nWinWidth = m_nLastWidth;
-            m_nWinHeight = m_nLastHeight;
-            m_nWindState = getExtendedState();
-            T.d("m_nWindState = " + m_nWindState);
-
-            Properties p = new Properties();
-            try {
-                p.load(new FileInputStream(savePath));
-            } catch (IOException e) {
-                T.d("cannot load filter file: " + savePath);
-                //e.printStackTrace();
-                //return;
-            }
-//            if (m_strLastDir != null) {
-//                p.setProperty(INI_LAST_DIR, m_strLastDir);
-//            }
-//            p.setProperty(INI_FONT_TYPE,
-//                    (String) m_jcFontType.getSelectedItem());
-            p.setProperty(INI_WORD_FIND, m_tfFindWord.getText());
-            p.setProperty(INI_WORD_REMOVE, m_tfRemoveWord.getText());
-            p.setProperty(INI_TAG_SHOW, m_tfShowTag.getText());
-            p.setProperty(INI_TAG_REMOVE, m_tfRemoveTag.getText());
-            p.setProperty(INI_PID_SHOW, m_tfShowPid.getText());
-            p.setProperty(INI_TID_SHOW, m_tfShowTid.getText());
-            p.setProperty(INI_HIGHLIGHT, m_tfHighlight.getText());
-            p.setProperty(INI_WIDTH, "" + m_nWinWidth);
-            p.setProperty(INI_HEIGHT, "" + m_nWinHeight);
-            p.setProperty(INI_WINDOW_STATE, "" + m_nWindState);
-
-            for (int nIndex = 0; nIndex < LogFilterTableModel.COMUMN_MAX; nIndex++) {
-                p.setProperty(INI_COMUMN + nIndex,
-                        "" + getLogTable().getColumnWidth(nIndex));
-            }
-            p.store(new FileOutputStream(savePath), "done.");
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
     void addDesc(String strMessage) {
         LogInfo logInfo = new LogInfo();
         logInfo.m_intLine = m_arLogInfoAll.size() + 1;
@@ -609,25 +560,8 @@ public class LogFilterMain extends JFrame implements INotiEvent {
         addDesc(VERSION);
         addDesc("");
         addDesc("Xinyu.he fork from https://github.com/iookill/LogFilter");
-        addDesc("");
-        addDesc("[Tag]");
-        addDesc("Alt+L/R Click : Show/Remove tag");
-        addDesc("");
-        addDesc("[Bookmark]");
-        addDesc("Ctrl+F2/double click: bookmark toggle");
-        addDesc("F2 : pre bookmark");
-        addDesc("F3 : next bookmark");
-        addDesc("");
-        addDesc("[Copy]");
-        addDesc("Ctrl+c : row copy");
-        addDesc("right click : cloumn copy");
     }
 
-    /**
-     * @param nIndex    ���� ����Ʈ�� �ε���
-     * @param nLine     m_intLine
-     * @param bBookmark
-     */
     void bookmarkItem(int nIndex, int nLine, boolean bBookmark) {
         synchronized (FILTER_LOCK) {
             LogInfo logInfo = m_arLogInfoAll.get(nLine);
@@ -2444,30 +2378,11 @@ public class LogFilterMain extends JFrame implements INotiEvent {
     };
 
 
-    private void loadCheckboxes() {
-        Properties p = new Properties();
-        try {
-            p.load(new FileInputStream(INI_FILE));
-        } catch (IOException e) {
-            e.printStackTrace();
-            return;
+    private void loadTableColumnState() {
+        for (int nIndex = 0; nIndex < LogFilterTableModel.COMUMN_MAX; nIndex++) {
+            LogFilterTableModel.setColumnWidth(nIndex, m_colWidths[nIndex]);
         }
-        m_chkVerbose.setSelected(Boolean.valueOf(p.getProperty(INI_FILTER_LEVEL_V, "true")));
-        m_chkDebug.setSelected(Boolean.valueOf(p.getProperty(INI_FILTER_LEVEL_D, "true")));
-        m_chkInfo.setSelected(Boolean.valueOf(p.getProperty(INI_FILTER_LEVEL_I, "true")));
-        m_chkWarn.setSelected(Boolean.valueOf(p.getProperty(INI_FILTER_LEVEL_W, "true")));
-        m_chkError.setSelected(Boolean.valueOf(p.getProperty(INI_FILTER_LEVEL_E, "true")));
-        m_chkFatal.setSelected(Boolean.valueOf(p.getProperty(INI_FILTER_LEVEL_F, "true")));
-
-        m_chkClmBookmark.setSelected(Boolean.valueOf(p.getProperty(INI_SHOW_COLUMN_MARK, "false")));
-        m_chkClmLine.setSelected(Boolean.valueOf(p.getProperty(INI_SHOW_COLUMN_LINE, "true")));
-        m_chkClmDate.setSelected(Boolean.valueOf(p.getProperty(INI_SHOW_COLUMN_DATE, "true")));
-        m_chkClmTime.setSelected(Boolean.valueOf(p.getProperty(INI_SHOW_COLUMN_TIME, "true")));
-        m_chkClmLogLV.setSelected(Boolean.valueOf(p.getProperty(INI_SHOW_COLUMN_LV, "true")));
-        m_chkClmPid.setSelected(Boolean.valueOf(p.getProperty(INI_SHOW_COLUMN_PID, "true")));
-        m_chkClmThread.setSelected(Boolean.valueOf(p.getProperty(INI_SHOW_COLUMN_TID, "true")));
-        m_chkClmTag.setSelected(Boolean.valueOf(p.getProperty(INI_SHOW_COLUMN_TAG, "true")));
-        m_chkClmMessage.setSelected(Boolean.valueOf(p.getProperty(INI_SHOW_COLUMN_MSG, "true")));
+        m_colWidths = LogFilterTableModel.ColWidth;
 
         getLogTable().showColumn(LogFilterTableModel.COMUMN_BOOKMARK,
                 m_chkClmBookmark.isSelected());
@@ -2492,66 +2407,44 @@ public class LogFilterMain extends JFrame implements INotiEvent {
     ItemListener m_itemListener = new ItemListener() {
         public void itemStateChanged(ItemEvent itemEvent) {
             JCheckBox check = (JCheckBox) itemEvent.getSource();
-            Properties p = new Properties();
-            try {
-                p.load(new FileInputStream(INI_FILE));
-            } catch (IOException e) {
-                e.printStackTrace();
-                return;
-            }
 
             if (check.equals(m_chkVerbose)) {
-                p.setProperty(INI_FILTER_LEVEL_V, String.valueOf(check.isSelected()));
                 setLogLV(LogInfo.LOG_LV_VERBOSE, check.isSelected());
             } else if (check.equals(m_chkDebug)) {
-                p.setProperty(INI_FILTER_LEVEL_D, String.valueOf(check.isSelected()));
                 setLogLV(LogInfo.LOG_LV_DEBUG, check.isSelected());
             } else if (check.equals(m_chkInfo)) {
-                p.setProperty(INI_FILTER_LEVEL_I, String.valueOf(check.isSelected()));
                 setLogLV(LogInfo.LOG_LV_INFO, check.isSelected());
             } else if (check.equals(m_chkWarn)) {
-                p.setProperty(INI_FILTER_LEVEL_W, String.valueOf(check.isSelected()));
                 setLogLV(LogInfo.LOG_LV_WARN, check.isSelected());
             } else if (check.equals(m_chkError)) {
-                p.setProperty(INI_FILTER_LEVEL_E, String.valueOf(check.isSelected()));
                 setLogLV(LogInfo.LOG_LV_ERROR, check.isSelected());
             } else if (check.equals(m_chkFatal)) {
-                p.setProperty(INI_FILTER_LEVEL_F, String.valueOf(check.isSelected()));
                 setLogLV(LogInfo.LOG_LV_FATAL, check.isSelected());
             } else if (check.equals(m_chkClmBookmark)) {
-                p.setProperty(INI_SHOW_COLUMN_MARK, String.valueOf(check.isSelected()));
                 getLogTable().showColumn(LogFilterTableModel.COMUMN_BOOKMARK,
                         check.isSelected());
             } else if (check.equals(m_chkClmLine)) {
-                p.setProperty(INI_SHOW_COLUMN_LINE, String.valueOf(check.isSelected()));
                 getLogTable().showColumn(LogFilterTableModel.COMUMN_LINE,
                         check.isSelected());
             } else if (check.equals(m_chkClmDate)) {
-                p.setProperty(INI_SHOW_COLUMN_DATE, String.valueOf(check.isSelected()));
                 getLogTable().showColumn(LogFilterTableModel.COMUMN_DATE,
                         check.isSelected());
             } else if (check.equals(m_chkClmTime)) {
-                p.setProperty(INI_SHOW_COLUMN_TIME, String.valueOf(check.isSelected()));
                 getLogTable().showColumn(LogFilterTableModel.COMUMN_TIME,
                         check.isSelected());
             } else if (check.equals(m_chkClmLogLV)) {
-                p.setProperty(INI_SHOW_COLUMN_LV, String.valueOf(check.isSelected()));
                 getLogTable().showColumn(LogFilterTableModel.COMUMN_LOGLV,
                         check.isSelected());
             } else if (check.equals(m_chkClmPid)) {
-                p.setProperty(INI_SHOW_COLUMN_PID, String.valueOf(check.isSelected()));
                 getLogTable().showColumn(LogFilterTableModel.COMUMN_PID,
                         check.isSelected());
             } else if (check.equals(m_chkClmThread)) {
-                p.setProperty(INI_SHOW_COLUMN_TID, String.valueOf(check.isSelected()));
                 getLogTable().showColumn(LogFilterTableModel.COMUMN_THREAD,
                         check.isSelected());
             } else if (check.equals(m_chkClmTag)) {
-                p.setProperty(INI_SHOW_COLUMN_TAG, String.valueOf(check.isSelected()));
                 getLogTable().showColumn(LogFilterTableModel.COMUMN_TAG,
                         check.isSelected());
             } else if (check.equals(m_chkClmMessage)) {
-                p.setProperty(INI_SHOW_COLUMN_MSG, String.valueOf(check.isSelected()));
                 getLogTable().showColumn(LogFilterTableModel.COMUMN_MESSAGE,
                         check.isSelected());
             } else if (check.equals(m_chkEnableFind)
@@ -2564,11 +2457,6 @@ public class LogFilterMain extends JFrame implements INotiEvent {
                     || check.equals(m_chkEnableTimeTag)
                     || check.equals(m_chkEnableHighlight)) {
                 useFilter(check);
-            }
-            try {
-                p.store(new FileOutputStream(INI_FILE), "done.");
-            } catch (IOException e) {
-                e.printStackTrace();
             }
         }
     };
@@ -2662,7 +2550,7 @@ public class LogFilterMain extends JFrame implements INotiEvent {
             T.e("mode file == null");
             return;
         }
-        saveFilter(file.getAbsolutePath());
+        mStateSaver.save(file.getAbsolutePath());
     }
 
     private void loadModeFile(File file) {
@@ -2670,7 +2558,7 @@ public class LogFilterMain extends JFrame implements INotiEvent {
             T.e("mode file == null");
             return;
         }
-        loadFilter(file.getAbsolutePath());
+        mStateSaver.load(file.getAbsolutePath());
     }
 
     public void refreshDiffMenuBar() {

@@ -3,6 +3,10 @@ package com.bt.tool;
 import com.bt.tool.diff.DiffService;
 
 import javax.swing.*;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ListSelectionEvent;
+import javax.swing.event.TableColumnModelEvent;
+import javax.swing.event.TableColumnModelListener;
 import javax.swing.table.*;
 import java.awt.*;
 import java.awt.event.*;
@@ -167,6 +171,7 @@ public class LogTable extends JTable implements FocusListener, ActionListener {
             }
         });
         getTableHeader().addMouseListener(new ColumnHeaderListener());
+        getColumnModel().addColumnModelListener(mTableColumnWidthListener);
     }
 
     private JPopupMenu createRightClickPopUp() {
@@ -554,6 +559,7 @@ public class LogTable extends JTable implements FocusListener, ActionListener {
 
         // Set the width
         col.setPreferredWidth(width);
+        LogFilterTableModel.ColWidth[vColIndex] = width;
     }
 
     public float getFontSize() {
@@ -580,9 +586,41 @@ public class LogTable extends JTable implements FocusListener, ActionListener {
         for (int iIndex = 0; iIndex < getColumnCount(); iIndex++) {
             showColumn(iIndex, true);
         }
-//        showColumn(LogFilterTableModel.COMUMN_BOOKMARK, false);
-//        showColumn(com.bt.tool.LogFilterTableModel.COMUMN_THREAD, false);
     }
+
+
+    private TableColumnModelListener mTableColumnWidthListener = new TableColumnModelListener() {
+
+        @Override
+        public void columnMarginChanged(ChangeEvent e) {
+            TableColumn tableColumn = getTableHeader().getResizingColumn();
+            if (tableColumn != null) {
+                int colIdx = tableColumn.getModelIndex();
+                int width = tableColumn.getWidth();
+                LogFilterTableModel.ColWidth[colIdx] = width;
+            }
+        }
+
+        @Override
+        public void columnAdded(TableColumnModelEvent e) {
+
+        }
+
+        @Override
+        public void columnRemoved(TableColumnModelEvent e) {
+
+        }
+
+        @Override
+        public void columnMoved(TableColumnModelEvent e) {
+
+        }
+
+        @Override
+        public void columnSelectionChanged(ListSelectionEvent e) {
+
+        }
+    };
 
     void setFilterFind(String strFind) {
         m_strFilterFind = strFind;
