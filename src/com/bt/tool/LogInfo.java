@@ -25,6 +25,8 @@ public class LogInfo {
     long m_timestamp = -1l;
     Color m_TextColor;
 
+    TYPE mType = TYPE.SYSTEM;
+
     public void display() {
         T.d("=============================================");
         T.d("m_bMarked      = " + m_bMarked);
@@ -91,5 +93,9 @@ public class LogInfo {
             return true;
         }
         return false;
+    }
+
+    public enum TYPE {
+        SYSTEM, DUMP_OF_SERVICE
     }
 }

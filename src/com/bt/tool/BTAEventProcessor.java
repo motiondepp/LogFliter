@@ -57,7 +57,8 @@ public class BTAEventProcessor extends MessagePostProcessor {
     }
 
     @Override
-    protected String process(String src) {
+    protected LogInfo process(LogInfo srcInfo) {
+        String src = srcInfo.m_strMessage;
         if (mSubSysList != null && src.startsWith("BTA got event ")) {
             try {
                 String eventName = "known";
@@ -80,7 +81,8 @@ public class BTAEventProcessor extends MessagePostProcessor {
                 e.printStackTrace();
             }
         }
-        return src;
+        srcInfo.m_strMessage = src;
+        return srcInfo;
     }
 
     @Override

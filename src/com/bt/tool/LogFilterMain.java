@@ -59,6 +59,7 @@ public class LogFilterMain extends JFrame implements INotiEvent {
     static final int STATUS_READY = 4;
 
     private static final String DIFF_PROGRAM_PATH = "C:\\Program Files\\KDiff3\\kdiff3.exe";
+    private static final String CALC_PROGRAM_PATH = "calc";
 
     JTabbedPane m_tpTab;
     JLabel m_tfStatus;
@@ -211,6 +212,8 @@ public class LogFilterMain extends JFrame implements INotiEvent {
     private final StateSaver mStateSaver;
     private JTextField m_tfFromTimeTag;
     private JTextField m_tfToTimeTag;
+    private JCheckBox m_chkEnableDumpOfService;
+    private boolean mDumpOfServiceEnabled = false;
 
     public static void main(final String args[]) {
         // frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -662,7 +665,6 @@ public class LogFilterMain extends JFrame implements INotiEvent {
 
     void addLogInfo(LogInfo logInfo) {
         synchronized (FILTER_LOCK) {
-            getLogTable().setTagLength(logInfo.m_strTag.length());
             m_arLogInfoAll.add(logInfo);
             // addTagList(logInfo.m_strTag);
             if (logInfo.m_strLogLV.equals("E")
@@ -988,16 +990,30 @@ public class LogFilterMain extends JFrame implements INotiEvent {
 
         mDumpOfServiceBomboBox = new JComboBox<>();
         mDumpOfServiceBomboBox.addItem(new DumpOfServiceInfo("", -1));
-        mDumpOfServiceBomboBox.addItemListener(new ItemListener() {
+        mDumpOfServiceBomboBox.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (e.getSource() == mDumpOfServiceBomboBox) {
+                    DumpOfServiceInfo dumpOfServiceInfo = (DumpOfServiceInfo) mDumpOfServiceBomboBox.getSelectedItem();
+                    T.d("mDumpOfServiceBomboBox actionPerformed: " + dumpOfServiceInfo.name);
+                    m_tbLogTable.showRow(dumpOfServiceInfo.row, true);
+                }
+            }
+        });
+
+        m_chkEnableDumpOfService = new JCheckBox();
+        m_chkEnableDumpOfService.setSelected(false);
+        m_chkEnableDumpOfService.addItemListener(new ItemListener() {
             @Override
             public void itemStateChanged(ItemEvent e) {
-                if (e.getStateChange() != ItemEvent.SELECTED) return;
-                DumpOfServiceInfo dumpOfServiceInfo = (DumpOfServiceInfo) e.getItem();
-                m_tbLogTable.showRow(dumpOfServiceInfo.row, true);
+                JCheckBox check = (JCheckBox) e.getSource();
+                mDumpOfServiceEnabled = check.isSelected();
+                runFilter();
             }
         });
 
         jpMain.add(mDumpOfServiceBomboBox, BorderLayout.CENTER);
+        jpMain.add(m_chkEnableDumpOfService, BorderLayout.EAST);
         return jpMain;
     }
 
@@ -1128,10 +1144,24 @@ public class LogFilterMain extends JFrame implements INotiEvent {
             }
         });
 
+        JButton calcButton = new JButton("Calc");
+        calcButton.setMargin(new Insets(0, 0, 0, 0));
+        calcButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                try {
+                    Utils.runCmd(new String[]{CALC_PROGRAM_PATH});
+                } catch (IOException e1) {
+                    e1.printStackTrace();
+                }
+            }
+        });
+
         jpTool.add(runOGButton);
         jpTool.add(runCLIndexButton);
         jpTool.add(plmButton);
         jpTool.add(diffButton);
+        jpTool.add(calcButton);
         return jpTool;
     }
 
@@ -1402,23 +1432,24 @@ public class LogFilterMain extends JFrame implements INotiEvent {
                     clearData();
                     getLogTable().clearSelection();
 
-                    boolean inMainLog = false;
+                    boolean inSystemLog = false;
                     boolean inDumpServiceLog = false;
                     while ((strLine = br.readLine()) != null) {
-                        if (!inMainLog && strLine.endsWith("beginning of main")) {
-                            inMainLog = true;
+                        if (!inSystemLog && strLine.startsWith("--------- beginning of")) {
+                            inSystemLog = true;
                             continue;
-                        } else if (inMainLog && strLine.startsWith("[logcat:")) {
-                            inMainLog = false;
+                        } else if (inSystemLog && strLine.startsWith("[logcat:")) {
+                            inSystemLog = false;
                             continue;
                         }
 
-                        if (!inDumpServiceLog && strLine.startsWith("DUMP OF SERVICE")) {
+                        if (mDumpOfServiceEnabled && !inSystemLog && !inDumpServiceLog && strLine.startsWith("DUMP OF SERVICE")) {
                             inDumpServiceLog = true;
 
                             LogInfo dumpHeader = new LogInfo();
                             dumpHeader.m_strMessage = "===================================";
                             dumpHeader.m_strLogLV = "D";
+                            dumpHeader.mType = LogInfo.TYPE.DUMP_OF_SERVICE;
                             dumpHeader.m_TextColor = m_iLogParser.getColor(dumpHeader);
                             dumpHeader.m_intLine = nIndex++;
                             addLogInfo(dumpHeader);
@@ -1426,6 +1457,7 @@ public class LogFilterMain extends JFrame implements INotiEvent {
                             LogInfo dumpName = new LogInfo();
                             dumpName.m_strMessage = strLine;
                             dumpName.m_strLogLV = "D";
+                            dumpName.mType = LogInfo.TYPE.DUMP_OF_SERVICE;
                             dumpName.m_TextColor = m_iLogParser.getColor(dumpName);
                             dumpName.m_intLine = nIndex++;
                             addLogInfo(dumpName);
@@ -1440,11 +1472,13 @@ public class LogFilterMain extends JFrame implements INotiEvent {
 
                         if (inDumpServiceLog && !"".equals(strLine.trim())) {
                             LogInfo logInfo = new LogInfo();
+                            logInfo.mType = LogInfo.TYPE.DUMP_OF_SERVICE;
                             logInfo.m_strMessage = strLine;
                             logInfo.m_intLine = nIndex++;
                             addLogInfo(logInfo);
-                        } else if (inMainLog && !"".equals(strLine.trim())) {
+                        } else if (inSystemLog && !"".equals(strLine.trim())) {
                             LogInfo logInfo = m_iLogParser.parseLog(strLine);
+                            logInfo.mType = LogInfo.TYPE.SYSTEM;
                             logInfo.m_intLine = nIndex++;
                             addLogInfo(logInfo);
                         }
@@ -1830,7 +1864,6 @@ public class LogFilterMain extends JFrame implements INotiEvent {
                                 if (nIndex % 10000 == 0)
                                     Thread.sleep(1);
                                 if (m_nChangedFilter == STATUS_CHANGE) {
-                                    // com.bt.tool.T.d("m_nChangedFilter == STATUS_CHANGE");
                                     break;
                                 }
                                 logInfo = m_arLogInfoAll.get(nIndex);
@@ -2132,10 +2165,10 @@ public class LogFilterMain extends JFrame implements INotiEvent {
                 && (getLogTable().GetFilterShowTag().length() == 0 || !m_chkEnableShowTag.isSelected())
                 && (getLogTable().GetFilterRemoveTag().length() == 0 || !m_chkEnableRemoveTag.isSelected())
                 && (getLogTable().GetFilterBookmarkTag().length() == 0 || !m_chkEnableBookmarkTag.isSelected())
-                && ((getLogTable().GetFilterFromTime() == -1l && getLogTable().GetFilterToTime() == -1l)
-                || !m_chkEnableTimeTag.isSelected())
+                && ((getLogTable().GetFilterFromTime() == -1l && getLogTable().GetFilterToTime() == -1l) || !m_chkEnableTimeTag.isSelected())
                 && (getLogTable().GetFilterFind().length() == 0 || !m_chkEnableFind.isSelected())
-                && (getLogTable().GetFilterRemove().length() == 0 || !m_chkEnableRemove.isSelected())) {
+                && (getLogTable().GetFilterRemove().length() == 0 || !m_chkEnableRemove.isSelected())
+                ) {
             m_bUserFilter = false;
         } else
             m_bUserFilter = true;

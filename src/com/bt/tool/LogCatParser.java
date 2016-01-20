@@ -16,7 +16,12 @@ public class LogCatParser implements ILogParser {
 
     public static final DateFormat TIMESTAMP_FORMAT = new SimpleDateFormat("HH:mm:ss.SSS");
 
-    public IPostProcessor<String> mMessagePostProcessor = new BTAEventProcessor("BTA_event_conf.json");
+    public MessagePostProcessor mMessagePostProcessor;
+
+    public LogCatParser() {
+        mMessagePostProcessor = new BTAEventProcessor("BTA_event_conf.json");
+        mMessagePostProcessor.setNextProcessor(new BluetoothAdapterStateProcessor());
+    }
 
     public Color getColor(LogInfo logInfo) {
         if (logInfo.m_strLogLV == null) return Color.BLACK;
@@ -140,7 +145,7 @@ public class LogCatParser implements ILogParser {
                 logInfo.m_strMessage += stk.nextToken(TOKEN_MESSAGE);
             }
             logInfo.m_strMessage = logInfo.m_strMessage.replaceFirst("\\): ", "");
-            logInfo.m_strMessage = mMessagePostProcessor.postProcess(logInfo);
+            logInfo = mMessagePostProcessor.postProcess(logInfo);
         }
         logInfo.m_TextColor = getColor(logInfo);
         return logInfo;
@@ -183,7 +188,7 @@ public class LogCatParser implements ILogParser {
                 logInfo.m_strMessage += stk.nextToken(TOKEN_MESSAGE);
             }
             logInfo.m_strMessage = logInfo.m_strMessage.replaceFirst("\\): ", "");
-            logInfo.m_strMessage = mMessagePostProcessor.postProcess(logInfo);
+            logInfo = mMessagePostProcessor.postProcess(logInfo);
         }
         logInfo.m_TextColor = getColor(logInfo);
         return logInfo;
@@ -210,7 +215,7 @@ public class LogCatParser implements ILogParser {
                 logInfo.m_strMessage += " " + stk.nextToken(TOKEN_SPACE);
             }
             logInfo.m_strMessage = logInfo.m_strMessage.replaceFirst("  ", "");
-            logInfo.m_strMessage = mMessagePostProcessor.postProcess(logInfo);
+            logInfo = mMessagePostProcessor.postProcess(logInfo);
         }
         logInfo.m_TextColor = getColor(logInfo);
         return logInfo;
@@ -226,7 +231,7 @@ public class LogCatParser implements ILogParser {
         else {
             LogInfo logInfo = new LogInfo();
             logInfo.m_strMessage = strText;
-            logInfo.m_strMessage = mMessagePostProcessor.postProcess(logInfo);
+            logInfo = mMessagePostProcessor.postProcess(logInfo);
             return logInfo;
         }
     }

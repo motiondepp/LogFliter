@@ -30,7 +30,6 @@ public class LogTable extends JTable implements FocusListener, ActionListener {
     String m_strFilterFind;
     float m_fFontSize;
     boolean m_bAltPressed;
-    int m_nTagLength;
     boolean[] m_arbShow;
 
     private LogInfo m_latestSelectLogInfo;
@@ -51,7 +50,6 @@ public class LogTable extends JTable implements FocusListener, ActionListener {
         m_strTagBookmark = "";
         m_strFilterRemove = "";
         m_strFilterFind = "";
-        m_nTagLength = 0;
         m_arbShow = new boolean[LogFilterTableModel.COMUMN_MAX];
         init();
         setColumnWidth();
@@ -816,6 +814,7 @@ public class LogTable extends JTable implements FocusListener, ActionListener {
                                                        boolean hasFocus,
                                                        int row,
                                                        int column) {
+            LogInfo logInfo = ((LogFilterTableModel) getModel()).getRow(row);
             if (value != null) {
                 value = remakeData(column, value.toString());
             }
@@ -825,7 +824,6 @@ public class LogTable extends JTable implements FocusListener, ActionListener {
                     hasFocus,
                     row,
                     column);
-            LogInfo logInfo = ((LogFilterTableModel) getModel()).getRow(row);
             c.setFont(getFont().deriveFont(m_fFontSize));
             c.setForeground(logInfo.m_TextColor);
             if (isSelected) {
@@ -1041,13 +1039,6 @@ public class LogTable extends JTable implements FocusListener, ActionListener {
         }
         sbf.deleteCharAt(sbf.length() - 1); // remove last \n
         return sbf.toString();
-    }
-
-    public void setTagLength(int nLength) {
-        if (m_nTagLength < nLength) {
-            m_nTagLength = nLength;
-            //T.d("m_nTagLength = " + m_nTagLength);
-        }
     }
 
     public LogInfo getLatestSelectedLogInfo() {
