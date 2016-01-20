@@ -43,7 +43,7 @@ public class LogFilterMain extends JFrame implements INotiEvent {
     final String ANDROID_DEFAULT_CMD_FIRST = "adb ";
     final String ANDROID_SELECTED_CMD_FIRST = "adb -s ";
     // final String ANDROID_SELECTED_CMD_LAST = " logcat -v time ";
-    final String[] DEVICES_CMD = {"adb devices", "", ""};
+    final String[] DEVICES_CMD = {"adb devices -l", "", ""};
 
     static final int DEFAULT_WIDTH = 1200;
     static final int DEFAULT_HEIGHT = 720;
@@ -97,7 +97,7 @@ public class LogFilterMain extends JFrame implements INotiEvent {
 
     // Device
     JButton m_btnDevice;
-    JList m_lDeviceList;
+    JList<TargetDevice> m_lDeviceList;
     JComboBox<String> m_comboDeviceCmd;
     JComboBox<String> m_comboCmd;
     JButton m_btnSetFont;
@@ -603,7 +603,7 @@ public class LogFilterMain extends JFrame implements INotiEvent {
         return jp;
     }
 
-    Component getCmdPanel() {
+    Component getDevicePanel() {
         JPanel jpOptionDevice = new JPanel();
         jpOptionDevice.setBorder(BorderFactory
                 .createTitledBorder("Device select"));
@@ -631,7 +631,6 @@ public class LogFilterMain extends JFrame implements INotiEvent {
             }
         });
 
-        final DefaultListModel listModel = new DefaultListModel();
         m_btnDevice = new JButton("OK");
         m_btnDevice.setMargin(new Insets(0, 0, 0, 0));
         m_btnDevice.addActionListener(m_alButtonListener);
@@ -641,20 +640,18 @@ public class LogFilterMain extends JFrame implements INotiEvent {
 
         jpOptionDevice.add(jpCmd, BorderLayout.NORTH);
 
-        m_lDeviceList = new JList(listModel);
+        final DefaultListModel<TargetDevice> listModel = new DefaultListModel<>();
+        m_lDeviceList = new JList<>(listModel);
         JScrollPane vbar = new JScrollPane(m_lDeviceList);
         vbar.setPreferredSize(new Dimension(100, 50));
         m_lDeviceList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         m_lDeviceList.addListSelectionListener(new ListSelectionListener() {
             public void valueChanged(ListSelectionEvent e) {
                 JList deviceList = (JList) e.getSource();
-                Object selectedItem = (Object) deviceList.getSelectedValue();
+                TargetDevice selectedItem = (TargetDevice) deviceList.getSelectedValue();
                 m_strSelectedDevice = "";
                 if (selectedItem != null) {
-                    m_strSelectedDevice = selectedItem.toString().trim();
-                    m_strSelectedDevice = m_strSelectedDevice
-                            .replace("\t", " ").replace("device", "")
-                            .replace("offline", "");
+                    m_strSelectedDevice = selectedItem.code;
                 }
             }
         });
@@ -1141,7 +1138,7 @@ public class LogFilterMain extends JFrame implements INotiEvent {
     Component getOptionFilter() {
         JPanel optionFilter = new JPanel(new BorderLayout());
 
-        optionFilter.add(getCmdPanel(), BorderLayout.WEST);
+        optionFilter.add(getDevicePanel(), BorderLayout.WEST);
         optionFilter.add(getFilterPanel(), BorderLayout.CENTER);
 
         JPanel aPanel = new JPanel(new BorderLayout());
@@ -1490,7 +1487,7 @@ public class LogFilterMain extends JFrame implements INotiEvent {
     void setDeviceList() {
         m_strSelectedDevice = "";
 
-        DefaultListModel listModel = (DefaultListModel) m_lDeviceList
+        DefaultListModel<TargetDevice> listModel = (DefaultListModel<TargetDevice>) m_lDeviceList
                 .getModel();
         try {
             listModel.clear();
@@ -1508,21 +1505,17 @@ public class LogFilterMain extends JFrame implements INotiEvent {
 
             //
             while ((s = stdOut.readLine()) != null) {
-                if (!s.equals("List of devices attached ")) {
-                    s = s.replace("\t", " ");
-                    s = s.replace("device", "");
-                    listModel.addElement(s);
+                if (!s.equals("List of devices attached ") && s.length() != 0) {
+                    listModel.addElement(new TargetDevice(s));
                 }
             }
             while ((s = stdError.readLine()) != null) {
-                listModel.addElement(s);
+                if (s.length() != 0)
+                    listModel.addElement(new TargetDevice(s));
             }
-
-            //
-            System.out.println("Exit Code: " + oProcess.exitValue());
         } catch (Exception e) {
             T.e("e = " + e);
-            listModel.addElement(e);
+            listModel.addElement(new TargetDevice(e.getMessage()));
         }
     }
 
@@ -1757,7 +1750,6 @@ public class LogFilterMain extends JFrame implements INotiEvent {
                     }
                 } catch (Exception e) {
                     T.e(e);
-                    e.printStackTrace();
                 }
                 try {
                     if (br != null)
@@ -1770,7 +1762,6 @@ public class LogFilterMain extends JFrame implements INotiEvent {
                     T.e(e);
                 }
                 System.out.println("End m_thWatchFile thread");
-                // setTitle(LOGFILTER + " " + VERSION);
             }
         });
         m_thWatchFile.start();
@@ -2699,6 +2690,37 @@ public class LogFilterMain extends JFrame implements INotiEvent {
 
     private enum FileType {
         LOGFILE, MODEFILE
+    }
+
+    public class TargetDevice {
+        String code;
+        String product;
+        String model;
+        String device;
+
+        public TargetDevice(String src) {
+            src = src.replace("\t", " ");
+            int codeIdx = src.indexOf(' ');
+            if (codeIdx == -1) {
+                this.code = src;
+                return;
+            }
+
+            this.code = src.substring(0, codeIdx);
+            int infoIdx = src.indexOf("product:");
+            if (infoIdx != -1) {
+                String infoStr = src.substring(infoIdx);
+                String[] infos = infoStr.split("\\s+");
+                this.product = infos[0].substring("product:".length());
+                this.model = infos[1].substring("model:".length());
+                this.device = infos[2].substring("device:".length());
+            }
+        }
+
+        @Override
+        public String toString() {
+            return "[" + this.model + "]" + this.code;
+        }
     }
 
     public class DumpOfServiceInfo {
