@@ -33,9 +33,9 @@ public class IndicatorPanel extends JPanel {
         super();
         m_LogFilterMain = logFilterMain;
         m_chBookmark = new JCheckBox();
-//        m_chBookmark.setBackground( new Color( 555555 ) );
         m_chBookmark.addItemListener(m_itemListener);
         m_chBookmark.setBorder(new EmptyBorder(0, 0, 0, 0));
+        m_chBookmark.setEnabled(false);
 
         m_chError = new JCheckBox();
         m_chError.addItemListener(m_itemListener);
@@ -82,7 +82,7 @@ public class IndicatorPanel extends JPanel {
         });
         addMouseWheelListener(new MouseWheelListener() {
             public void mouseWheelMoved(MouseWheelEvent e) {
-                m_LogFilterMain.m_scrollVBar.dispatchEvent(e);
+                m_LogFilterMain.m_logScrollVBar.dispatchEvent(e);
             }
         });
     }
@@ -168,7 +168,7 @@ public class IndicatorPanel extends JPanel {
         int TOTAL_COUNT = m_arLogInfo.size();
 
         if (TOTAL_COUNT > 0) {
-            JViewport viewport = (JViewport) m_LogFilterMain.m_scrollVBar.getViewport();
+            JViewport viewport = (JViewport) m_LogFilterMain.m_logScrollVBar.getViewport();
             Rectangle viewRect = viewport.getViewRect();
 
             int nItemHeight = m_LogFilterMain.getLogTable().getRowHeight();
@@ -195,9 +195,9 @@ public class IndicatorPanel extends JPanel {
     ItemListener m_itemListener = new ItemListener() {
         public void itemStateChanged(ItemEvent itemEvent) {
             if (itemEvent.getSource().equals(m_chBookmark)) {
-                m_LogFilterMain.notiEvent(new INotiEvent.EventParam(INotiEvent.EVENT_CLICK_BOOKMARK));
+                m_LogFilterMain.notiEvent(new INotiEvent.EventParam(INotiEvent.TYPE.EVENT_CLICK_BOOKMARK));
             } else if (itemEvent.getSource().equals(m_chError)) {
-                m_LogFilterMain.notiEvent(new INotiEvent.EventParam(INotiEvent.EVENT_CLICK_ERROR));
+                m_LogFilterMain.notiEvent(new INotiEvent.EventParam(INotiEvent.TYPE.EVENT_CLICK_ERROR));
             }
         }
     };

@@ -1,5 +1,9 @@
 package com.bt.tool;
 
+import com.bt.tool.stream.BTAEventProcessor;
+import com.bt.tool.stream.BluetoothAdapterStateProcessor;
+import com.bt.tool.stream.MessagePostProcessor;
+
 import java.awt.*;
 import java.text.DateFormat;
 import java.text.ParseException;
@@ -24,42 +28,42 @@ public class LogCatParser implements ILogParser {
     }
 
     public Color getColor(LogInfo logInfo) {
-        if (logInfo.m_strLogLV == null) return Color.BLACK;
+        if (logInfo.getLogLV() == null) return Color.BLACK;
 
-        if (logInfo.m_strLogLV.equals("FATAL") || logInfo.m_strLogLV.equals("F"))
+        if (logInfo.getLogLV().equals("FATAL") || logInfo.getLogLV().equals("F"))
             return new Color(LogColor.COLOR_FATAL);
-        if (logInfo.m_strLogLV.equals("ERROR") || logInfo.m_strLogLV.equals("E") || logInfo.m_strLogLV.equals("3"))
+        if (logInfo.getLogLV().equals("ERROR") || logInfo.getLogLV().equals("E") || logInfo.getLogLV().equals("3"))
             return new Color(LogColor.COLOR_ERROR);
-        else if (logInfo.m_strLogLV.equals("WARN") || logInfo.m_strLogLV.equals("W") || logInfo.m_strLogLV.equals("4"))
+        else if (logInfo.getLogLV().equals("WARN") || logInfo.getLogLV().equals("W") || logInfo.getLogLV().equals("4"))
             return new Color(LogColor.COLOR_WARN);
-        else if (logInfo.m_strLogLV.equals("INFO") || logInfo.m_strLogLV.equals("I") || logInfo.m_strLogLV.equals("6"))
+        else if (logInfo.getLogLV().equals("INFO") || logInfo.getLogLV().equals("I") || logInfo.getLogLV().equals("6"))
             return new Color(LogColor.COLOR_INFO);
-        else if (logInfo.m_strLogLV.equals("DEBUG") || logInfo.m_strLogLV.equals("D") || logInfo.m_strLogLV.equals("7"))
+        else if (logInfo.getLogLV().equals("DEBUG") || logInfo.getLogLV().equals("D") || logInfo.getLogLV().equals("7"))
             return new Color(LogColor.COLOR_DEBUG);
-        else if (logInfo.m_strLogLV.equals("0"))
+        else if (logInfo.getLogLV().equals("0"))
             return new Color(LogColor.COLOR_0);
-        else if (logInfo.m_strLogLV.equals("1"))
+        else if (logInfo.getLogLV().equals("1"))
             return new Color(LogColor.COLOR_1);
-        else if (logInfo.m_strLogLV.equals("2"))
+        else if (logInfo.getLogLV().equals("2"))
             return new Color(LogColor.COLOR_2);
-        else if (logInfo.m_strLogLV.equals("5"))
+        else if (logInfo.getLogLV().equals("5"))
             return new Color(LogColor.COLOR_5);
         else
             return Color.BLACK;
     }
 
     public int getLogLV(LogInfo logInfo) {
-        if (logInfo.m_strLogLV == null) return LogInfo.LOG_LV_VERBOSE;
+        if (logInfo.getLogLV() == null) return LogInfo.LOG_LV_VERBOSE;
 
-        if (logInfo.m_strLogLV.equals("FATAL") || logInfo.m_strLogLV.equals("F"))
+        if (logInfo.getLogLV().equals("FATAL") || logInfo.getLogLV().equals("F"))
             return LogInfo.LOG_LV_FATAL;
-        if (logInfo.m_strLogLV.equals("ERROR") || logInfo.m_strLogLV.equals("E"))
+        if (logInfo.getLogLV().equals("ERROR") || logInfo.getLogLV().equals("E"))
             return LogInfo.LOG_LV_ERROR;
-        else if (logInfo.m_strLogLV.equals("WARN") || logInfo.m_strLogLV.equals("W"))
+        else if (logInfo.getLogLV().equals("WARN") || logInfo.getLogLV().equals("W"))
             return LogInfo.LOG_LV_WARN;
-        else if (logInfo.m_strLogLV.equals("INFO") || logInfo.m_strLogLV.equals("I"))
+        else if (logInfo.getLogLV().equals("INFO") || logInfo.getLogLV().equals("I"))
             return LogInfo.LOG_LV_INFO;
-        else if (logInfo.m_strLogLV.equals("DEBUG") || logInfo.m_strLogLV.equals("D"))
+        else if (logInfo.getLogLV().equals("DEBUG") || logInfo.getLogLV().equals("D"))
             return LogInfo.LOG_LV_DEBUG;
         else
             return LogInfo.LOG_LV_VERBOSE;
@@ -120,34 +124,34 @@ public class LogCatParser implements ILogParser {
 
         StringTokenizer stk = new StringTokenizer(strText, TOKEN_PID, false);
         if (stk.hasMoreElements()) {
-            logInfo.m_strDate = stk.nextToken();
+            logInfo.setDate(stk.nextToken());
         }
         if (stk.hasMoreElements()) {
-            logInfo.m_strTime = stk.nextToken();
+            logInfo.setTime(stk.nextToken());
             try {
-                logInfo.m_timestamp = TIMESTAMP_FORMAT.parse(logInfo.m_strTime).getTime();
+                logInfo.setTimestamp(TIMESTAMP_FORMAT.parse(logInfo.getTime()).getTime());
             } catch (ParseException e) {
                 e.printStackTrace();
             }
         }
         if (stk.hasMoreElements()) {
-            logInfo.m_strLogLV = stk.nextToken().trim();
+            logInfo.setLogLV(stk.nextToken().trim());
         }
         if (stk.hasMoreElements()) {
-            logInfo.m_strTag = stk.nextToken().trim();
+            logInfo.setTag(stk.nextToken().trim());
         }
         if (stk.hasMoreElements()) {
-            logInfo.m_strPid = stk.nextToken().trim();
+            logInfo.setPid(stk.nextToken().trim());
         }
         if (stk.hasMoreElements()) {
-            logInfo.m_strMessage = stk.nextToken(TOKEN_MESSAGE);
+            logInfo.setMessage(stk.nextToken(TOKEN_MESSAGE));
             while (stk.hasMoreElements()) {
-                logInfo.m_strMessage += stk.nextToken(TOKEN_MESSAGE);
+                logInfo.setMessage(logInfo.getMessage() + stk.nextToken(TOKEN_MESSAGE));
             }
-            logInfo.m_strMessage = logInfo.m_strMessage.replaceFirst("\\): ", "");
+            logInfo.setMessage(logInfo.getMessage().replaceFirst("\\): ", ""));
             logInfo = mMessagePostProcessor.postProcess(logInfo);
         }
-        logInfo.m_TextColor = getColor(logInfo);
+        logInfo.setTextColor(getColor(logInfo));
         return logInfo;
     }
 
@@ -156,41 +160,41 @@ public class LogCatParser implements ILogParser {
 
         StringTokenizer stk = new StringTokenizer(strText, TOKEN_SPACE, false);
         if (stk.hasMoreElements()) {
-            logInfo.m_strDate = stk.nextToken();
+            logInfo.setDate(stk.nextToken());
         }
         if (stk.hasMoreElements()) {
-            logInfo.m_strTime = stk.nextToken();
+            logInfo.setTime(stk.nextToken());
             try {
-                logInfo.m_timestamp = TIMESTAMP_FORMAT.parse(logInfo.m_strTime).getTime();
+                logInfo.setTimestamp(TIMESTAMP_FORMAT.parse(logInfo.getTime()).getTime());
             } catch (ParseException e) {
                 e.printStackTrace();
             }
         }
         if (stk.hasMoreElements()) {
-            logInfo.m_strPid = stk.nextToken().trim();
+            logInfo.setPid(stk.nextToken().trim());
         }
         if (stk.hasMoreElements()) {
-            logInfo.m_strThread = stk.nextToken().trim();
+            logInfo.setThread(stk.nextToken().trim());
         }
         if (stk.hasMoreElements()) {
-            logInfo.m_strLogLV = stk.nextToken().trim();
+            logInfo.setLogLV(stk.nextToken().trim());
         }
         if (stk.hasMoreElements()) {
-            logInfo.m_strTag = stk.nextToken().trim();
+            logInfo.setTag(stk.nextToken().trim());
         }
         if (stk.hasMoreElements()) {
-            logInfo.m_strMessage = stk.nextToken(TOKEN_MESSAGE).trim();
-            if (logInfo.m_strMessage.length() != 0 && logInfo.m_strMessage.charAt(0) == ':') {
-                logInfo.m_strTag += ":";
-                logInfo.m_strMessage = logInfo.m_strMessage.substring(1).trim();
+            logInfo.setMessage(stk.nextToken(TOKEN_MESSAGE).trim());
+            if (logInfo.getMessage().length() != 0 && logInfo.getMessage().charAt(0) == ':') {
+                logInfo.setTag(logInfo.getTag() + ":");
+                logInfo.setMessage(logInfo.getMessage().substring(1).trim());
             }
             while (stk.hasMoreElements()) {
-                logInfo.m_strMessage += stk.nextToken(TOKEN_MESSAGE);
+                logInfo.setMessage(logInfo.getMessage() + stk.nextToken(TOKEN_MESSAGE));
             }
-            logInfo.m_strMessage = logInfo.m_strMessage.replaceFirst("\\): ", "");
+            logInfo.setMessage(logInfo.getMessage().replaceFirst("\\): ", ""));
             logInfo = mMessagePostProcessor.postProcess(logInfo);
         }
-        logInfo.m_TextColor = getColor(logInfo);
+        logInfo.setTextColor(getColor(logInfo));
         return logInfo;
     }
 
@@ -199,25 +203,25 @@ public class LogCatParser implements ILogParser {
 
         StringTokenizer stk = new StringTokenizer(strText, TOKEN_KERNEL, false);
         if (stk.hasMoreElements()) {
-            logInfo.m_strLogLV = stk.nextToken();
+            logInfo.setLogLV(stk.nextToken());
         }
         if (stk.hasMoreElements()) {
-            logInfo.m_strTime = stk.nextToken();
+            logInfo.setTime(stk.nextToken());
             try {
-                logInfo.m_timestamp = TIMESTAMP_FORMAT.parse(logInfo.m_strTime).getTime();
+                logInfo.setTimestamp(TIMESTAMP_FORMAT.parse(logInfo.getTime()).getTime());
             } catch (ParseException e) {
                 e.printStackTrace();
             }
         }
         if (stk.hasMoreElements()) {
-            logInfo.m_strMessage = stk.nextToken(TOKEN_KERNEL);
+            logInfo.setMessage(stk.nextToken(TOKEN_KERNEL));
             while (stk.hasMoreElements()) {
-                logInfo.m_strMessage += " " + stk.nextToken(TOKEN_SPACE);
+                logInfo.setMessage(logInfo.getMessage() + " " + stk.nextToken(TOKEN_SPACE));
             }
-            logInfo.m_strMessage = logInfo.m_strMessage.replaceFirst("  ", "");
+            logInfo.setMessage(logInfo.getMessage().replaceFirst("  ", ""));
             logInfo = mMessagePostProcessor.postProcess(logInfo);
         }
-        logInfo.m_TextColor = getColor(logInfo);
+        logInfo.setTextColor(getColor(logInfo));
         return logInfo;
     }
 
@@ -230,7 +234,7 @@ public class LogCatParser implements ILogParser {
             return getKernel(strText);
         else {
             LogInfo logInfo = new LogInfo();
-            logInfo.m_strMessage = strText;
+            logInfo.setMessage(strText);
             logInfo = mMessagePostProcessor.postProcess(logInfo);
             return logInfo;
         }

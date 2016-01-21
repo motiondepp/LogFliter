@@ -1,5 +1,8 @@
-package com.bt.tool;
+package com.bt.tool.stream;
 
+import com.bt.tool.LogInfo;
+import com.bt.tool.T;
+import com.bt.tool.Utils;
 import com.bt.tool.json.JSONArray;
 import com.bt.tool.json.JSONObject;
 
@@ -58,7 +61,7 @@ public class BTAEventProcessor extends MessagePostProcessor {
 
     @Override
     protected LogInfo process(LogInfo srcInfo) {
-        String src = srcInfo.m_strMessage;
+        String src = srcInfo.getMessage();
         if (mSubSysList != null && src.startsWith("BTA got event ")) {
             try {
                 String eventName = "known";
@@ -81,12 +84,12 @@ public class BTAEventProcessor extends MessagePostProcessor {
                 e.printStackTrace();
             }
         }
-        srcInfo.m_strMessage = src;
+        srcInfo.setMessage(src);
         return srcInfo;
     }
 
     @Override
     public boolean shouldProcess(LogInfo info) {
-        return info != null && info.m_strTag.equals("bt-btif:");
+        return info != null && info.getTag().equals("bt-btif:");
     }
 }

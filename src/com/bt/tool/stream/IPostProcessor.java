@@ -1,4 +1,4 @@
-package com.bt.tool;
+package com.bt.tool.stream;
 
 /**
  * Created by xinyu.he on 2016/1/6.

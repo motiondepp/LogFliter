@@ -1,4 +1,6 @@
-package com.bt.tool;
+package com.bt.tool.stream;
+
+import com.bt.tool.LogInfo;
 
 /**
  * Created by xinyu.he on 2016/1/6.

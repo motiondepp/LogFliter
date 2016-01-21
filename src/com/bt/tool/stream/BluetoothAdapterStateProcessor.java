@@ -1,4 +1,6 @@
-package com.bt.tool;
+package com.bt.tool.stream;
+
+import com.bt.tool.LogInfo;
 
 import java.util.HashMap;
 import java.util.regex.Matcher;
@@ -32,7 +34,7 @@ public class BluetoothAdapterStateProcessor extends MessagePostProcessor {
 
     @Override
     protected LogInfo process(LogInfo src) {
-        String result = src.m_strMessage;
+        String result = src.getMessage();
         if (result.startsWith("Bluetooth adapter state changed")) {
             Matcher matcher = PATTERN.matcher(result);
             StringBuffer sb = new StringBuffer();
@@ -46,12 +48,12 @@ public class BluetoothAdapterStateProcessor extends MessagePostProcessor {
             sb.insert(0, " ( ").delete(sb.length() - STATE_SEP_STR.length(), sb.length()).append(" )");
             result += sb.toString();
         }
-        src.m_strMessage = result;
+        src.setMessage(result);
         return src;
     }
 
     @Override
     public boolean shouldProcess(LogInfo info) {
-        return info != null && info.m_strTag.equals("BluetoothAdapterState:");
+        return info != null && info.getTag().equals("BluetoothAdapterState:");
     }
 }

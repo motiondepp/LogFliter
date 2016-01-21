@@ -61,18 +61,17 @@ public class LogFilterMain extends JFrame implements INotiEvent {
     private static final String DIFF_PROGRAM_PATH = "C:\\Program Files\\KDiff3\\kdiff3.exe";
     private static final String CALC_PROGRAM_PATH = "calc";
 
-    JTabbedPane m_tpTab;
     JLabel m_tfStatus;
     IndicatorPanel m_ipIndicator;
     ArrayList<LogInfo> m_arLogInfoAll;
     ArrayList<LogInfo> m_arLogInfoFiltered;
-    HashMap<Integer, Integer> m_hmBookmarkAll;
-    HashMap<Integer, Integer> m_hmBookmarkFiltered;
+    HashMap<Integer, Integer> m_hmMarkedInfoAll;
+    HashMap<Integer, Integer> m_hmMarkedInfoFiltered;
     ConcurrentHashMap<Integer, Integer> m_hmErrorAll;
     ConcurrentHashMap<Integer, Integer> m_hmErrorFiltered;
     ILogParser m_iLogParser;
     LogTable m_tbLogTable;
-    JScrollPane m_scrollVBar;
+    JScrollPane m_logScrollVBar;
     LogFilterTableModel m_tmLogTableModel;
     boolean m_bUserFilter;
 
@@ -214,13 +213,24 @@ public class LogFilterMain extends JFrame implements INotiEvent {
     private JTextField m_tfToTimeTag;
     private JCheckBox m_chkEnableDumpOfService;
     private boolean mDumpOfServiceEnabled = false;
+    private JSplitPane mSplitPane;
+    @FieldSaveState
+    private int mSplitPaneDividerLocation = -1;
+
+    private SubLogTable m_tSublogTable;
+    private LogFilterTableModel m_tSubLogTableModel;
+    private JScrollPane m_subLogScrollVBar;
+    ArrayList<LogInfo> m_arSubLogInfoAll;
 
     public static void main(final String args[]) {
-        // frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-
         final LogFilterMain mainFrame = new LogFilterMain();
         mainFrame.setTitle(LOGFILTER + " " + VERSION);
-        // mainFrame.addWindowListener(new com.bt.tool.WindowEventHandler());
+        mainFrame.addWindowStateListener(new WindowStateListener() {
+            @Override
+            public void windowStateChanged(WindowEvent e) {
+                mainFrame.m_nWindState = e.getNewState();
+            }
+        });
 
         JMenuBar menubar = new JMenuBar();
         JMenu fileMenu = new JMenu("File");
@@ -307,7 +317,6 @@ public class LogFilterMain extends JFrame implements INotiEvent {
         menubar.add(fileMenu);
         menubar.add(netMenu);
         mainFrame.setJMenuBar(menubar);
-        mainFrame.pack();
 
         if (args != null && args.length > 0) {
             EventQueue.invokeLater(new Runnable() {
@@ -335,6 +344,9 @@ public class LogFilterMain extends JFrame implements INotiEvent {
             m_thFilterParse.interrupt();
 
         saveColor();
+        m_nWinWidth = getSize().width;
+        m_nWinHeight = getSize().height;
+        mSplitPaneDividerLocation = mSplitPane.getDividerLocation();
         mStateSaver.save();
         System.exit(0);
     }
@@ -350,7 +362,6 @@ public class LogFilterMain extends JFrame implements INotiEvent {
             }
         });
         initValue();
-        createComponent();
 
         Container pane = getContentPane();
         pane.setLayout(new BorderLayout());
@@ -358,7 +369,7 @@ public class LogFilterMain extends JFrame implements INotiEvent {
         pane.add(getOptionPanel(), BorderLayout.NORTH);
         pane.add(getBookmarkPanel(), BorderLayout.WEST);
         pane.add(getStatusPanel(), BorderLayout.SOUTH);
-        pane.add(getTabPanel(), BorderLayout.CENTER);
+        pane.add(getLogPanel(), BorderLayout.CENTER);
 
         setDnDListener();
         addChangeListener();
@@ -376,19 +387,29 @@ public class LogFilterMain extends JFrame implements INotiEvent {
         loadCmd();
         initDiffService();
 
-        setSize(m_nWinWidth, m_nWinHeight);
-        setExtendedState(m_nWindState);
-        setMinimumSize(new Dimension(MIN_WIDTH, MIN_HEIGHT));
-
         KeyboardFocusManager.getCurrentKeyboardFocusManager()
                 .addKeyEventDispatcher(mKeyEventDispatcher);
+
+        pack();
     }
 
     private void loadUI() {
         loadTableColumnState();
+
         getLogTable().setFontSize(Integer.parseInt(m_tfFontSize
                 .getText()));
+        getSubTable().setFontSize(Integer.parseInt(m_tfFontSize
+                .getText()));
+
         updateTable(-1, false);
+
+        mSplitPane.setResizeWeight(1.0);
+        mSplitPane.setOneTouchExpandable(true);
+        mSplitPane.setDividerLocation(mSplitPaneDividerLocation);
+
+        setMinimumSize(new Dimension(MIN_WIDTH, MIN_HEIGHT));
+        setExtendedState(m_nWindState);
+        setPreferredSize(new Dimension(m_nWinWidth, m_nWinHeight));
     }
 
     final String INI_FILE = CONFIG_BASE_DIR + File.separator + "LogFilter.ini";
@@ -554,8 +575,8 @@ public class LogFilterMain extends JFrame implements INotiEvent {
 
     void addDesc(String strMessage) {
         LogInfo logInfo = new LogInfo();
-        logInfo.m_intLine = m_arLogInfoAll.size() + 1;
-        logInfo.m_strMessage = strMessage;
+        logInfo.setLine(m_arLogInfoAll.size() + 1);
+        logInfo.setMessage(strMessage);
         m_arLogInfoAll.add(logInfo);
     }
 
@@ -568,32 +589,40 @@ public class LogFilterMain extends JFrame implements INotiEvent {
     void bookmarkItem(int nIndex, int nLine, boolean bBookmark) {
         synchronized (FILTER_LOCK) {
             LogInfo logInfo = m_arLogInfoAll.get(nLine);
-            logInfo.m_bMarked = bBookmark;
+            logInfo.setMarked(bBookmark);
             m_arLogInfoAll.set(nLine, logInfo);
 
-            if (logInfo.m_bMarked) {
-                m_hmBookmarkAll.put(nLine, nLine);
+            if (logInfo.isMarked()) {
+                m_arSubLogInfoAll.add(logInfo);
+                m_hmMarkedInfoAll.put(nLine, nLine);
                 if (m_bUserFilter)
-                    m_hmBookmarkFiltered.put(nLine, nIndex);
+                    m_hmMarkedInfoFiltered.put(nLine, nIndex);
             } else {
-                m_hmBookmarkAll.remove(nLine);
+                m_arSubLogInfoAll.remove(logInfo);
+                m_hmMarkedInfoAll.remove(nLine);
                 if (m_bUserFilter)
-                    m_hmBookmarkFiltered.remove(nLine);
+                    m_hmMarkedInfoFiltered.remove(nLine);
             }
         }
         m_ipIndicator.repaint();
+
+        m_arSubLogInfoAll.sort(new Comparator<LogInfo>() {
+            @Override
+            public int compare(LogInfo o1, LogInfo o2) {
+                return o1.getLine() - o2.getLine();
+            }
+        });
+        updateSubTable(-1, false);
     }
 
     void clearData() {
+        m_arSubLogInfoAll.clear();
         m_arLogInfoAll.clear();
         m_arLogInfoFiltered.clear();
-        m_hmBookmarkAll.clear();
-        m_hmBookmarkFiltered.clear();
+        m_hmMarkedInfoAll.clear();
+        m_hmMarkedInfoFiltered.clear();
         m_hmErrorAll.clear();
         m_hmErrorFiltered.clear();
-    }
-
-    void createComponent() {
     }
 
     Component getBookmarkPanel() {
@@ -601,7 +630,7 @@ public class LogFilterMain extends JFrame implements INotiEvent {
         jp.setLayout(new BorderLayout());
 
         m_ipIndicator = new IndicatorPanel(this);
-        m_ipIndicator.setData(m_arLogInfoAll, m_hmBookmarkAll, m_hmErrorAll);
+        m_ipIndicator.setData(m_arLogInfoAll, m_hmMarkedInfoAll, m_hmErrorAll);
         jp.add(m_ipIndicator, BorderLayout.CENTER);
         return jp;
     }
@@ -667,33 +696,33 @@ public class LogFilterMain extends JFrame implements INotiEvent {
         synchronized (FILTER_LOCK) {
             m_arLogInfoAll.add(logInfo);
             // addTagList(logInfo.m_strTag);
-            if (logInfo.m_strLogLV.equals("E")
-                    || logInfo.m_strLogLV.equals("ERROR"))
-                m_hmErrorAll.put(logInfo.m_intLine - 1,
-                        logInfo.m_intLine - 1);
+            if (logInfo.getLogLV().equals("E")
+                    || logInfo.getLogLV().equals("ERROR"))
+                m_hmErrorAll.put(logInfo.getLine() - 1,
+                        logInfo.getLine() - 1);
 
             if (m_bUserFilter) {
                 if (m_ipIndicator.m_chBookmark.isSelected()
                         || m_ipIndicator.m_chError.isSelected()) {
                     boolean bAddFilteredArray = false;
-                    if (logInfo.m_bMarked
+                    if (logInfo.isMarked()
                             && m_ipIndicator.m_chBookmark.isSelected()) {
                         bAddFilteredArray = true;
-                        m_hmBookmarkFiltered.put(logInfo.m_intLine - 1,
+                        m_hmMarkedInfoFiltered.put(logInfo.getLine() - 1,
                                 m_arLogInfoFiltered.size());
-                        if (logInfo.m_strLogLV.equals("E")
-                                || logInfo.m_strLogLV.equals("ERROR"))
-                            m_hmErrorFiltered.put(logInfo.m_intLine - 1,
+                        if (logInfo.getLogLV().equals("E")
+                                || logInfo.getLogLV().equals("ERROR"))
+                            m_hmErrorFiltered.put(logInfo.getLine() - 1,
                                     m_arLogInfoFiltered.size());
                     }
-                    if ((logInfo.m_strLogLV.equals("E") || logInfo.m_strLogLV
+                    if ((logInfo.getLogLV().equals("E") || logInfo.getLogLV()
                             .equals("ERROR"))
                             && m_ipIndicator.m_chError.isSelected()) {
                         bAddFilteredArray = true;
-                        m_hmErrorFiltered.put(logInfo.m_intLine - 1,
+                        m_hmErrorFiltered.put(logInfo.getLine() - 1,
                                 m_arLogInfoFiltered.size());
-                        if (logInfo.m_bMarked)
-                            m_hmBookmarkFiltered.put(logInfo.m_intLine - 1,
+                        if (logInfo.isMarked())
+                            m_hmMarkedInfoFiltered.put(logInfo.getLine() - 1,
                                     m_arLogInfoFiltered.size());
                     }
 
@@ -709,14 +738,14 @@ public class LogFilterMain extends JFrame implements INotiEvent {
                         && checkToTimeFilter(logInfo)
                         && checkBookmarkFilter(logInfo)) {
                     m_arLogInfoFiltered.add(logInfo);
-                    if (logInfo.m_bMarked)
-                        m_hmBookmarkFiltered.put(logInfo.m_intLine - 1,
+                    if (logInfo.isMarked())
+                        m_hmMarkedInfoFiltered.put(logInfo.getLine() - 1,
                                 m_arLogInfoFiltered.size());
-                    if (logInfo.m_strLogLV == "E"
-                            || logInfo.m_strLogLV == "ERROR")
-                        if (logInfo.m_strLogLV.equals("E")
-                                || logInfo.m_strLogLV.equals("ERROR"))
-                            m_hmErrorFiltered.put(logInfo.m_intLine - 1,
+                    if (logInfo.getLogLV() == "E"
+                            || logInfo.getLogLV() == "ERROR")
+                        if (logInfo.getLogLV().equals("E")
+                                || logInfo.getLogLV().equals("ERROR"))
+                            m_hmErrorFiltered.put(logInfo.getLine() - 1,
                                     m_arLogInfoFiltered.size());
                 }
             }
@@ -762,7 +791,7 @@ public class LogFilterMain extends JFrame implements INotiEvent {
         m_chkClmTag.addItemListener(m_itemListener);
         m_chkClmMessage.addItemListener(m_itemListener);
 
-        m_scrollVBar.getViewport().addChangeListener(new ChangeListener() {
+        m_logScrollVBar.getViewport().addChangeListener(new ChangeListener() {
             public void stateChanged(ChangeEvent e) {
                 // m_ipIndicator.m_bDrawFull = false;
                 if (getExtendedState() != JFrame.MAXIMIZED_BOTH) {
@@ -1183,16 +1212,6 @@ public class LogFilterMain extends JFrame implements INotiEvent {
         JPanel optionMenu = new JPanel(new BorderLayout());
         JPanel optionWest = new JPanel();
 
-//        JLabel jlFontType = new JLabel("Font Type : ");
-//        m_jcFontType = new JComboBox();
-//        String fonts[] = GraphicsEnvironment.getLocalGraphicsEnvironment()
-//                .getAvailableFontFamilyNames();
-//        m_jcFontType.addItem("Dialog");
-//        for (int i = 0; i < fonts.length; i++) {
-//            m_jcFontType.addItem(fonts[i]);
-//        }
-//        m_jcFontType.addActionListener(m_alButtonListener);
-
         JLabel jlFont = new JLabel("Font Size : ");
         m_tfFontSize = new JTextField(2);
         m_tfFontSize.setHorizontalAlignment(SwingConstants.RIGHT);
@@ -1223,28 +1242,6 @@ public class LogFilterMain extends JFrame implements INotiEvent {
         JLabel jlProcessCmd = new JLabel("Cmd : ");
         m_comboCmd = new JComboBox<>();
         m_comboCmd.setPreferredSize(new Dimension(180, 25));
-        // m_comboCmd.setMaximumSize( m_comboCmd.getPreferredSize() );
-        // m_comboCmd.setSize( 20000, m_comboCmd.getHeight() );
-        // m_comboCmd.addItem(ANDROID_THREAD_CMD);
-        // m_comboCmd.addItem(ANDROID_DEFAULT_CMD);
-        // m_comboCmd.addItem(ANDROID_RADIO_CMD);
-        // m_comboCmd.addItem(ANDROID_EVENT_CMD);
-        // m_comboCmd.addItem(ANDROID_CUSTOM_CMD);
-        // m_comboCmd.addItemListener(new ItemListener()
-        // {
-        // public void itemStateChanged(ItemEvent e)
-        // {
-        // if(e.getStateChange() != ItemEvent.SELECTED) return;
-        //
-        // if (e.getItem().equals(ANDROID_CUSTOM_CMD)) {
-        // m_comboCmd.setEditable(true);
-        // } else {
-        // m_comboCmd.setEditable(false);
-        // }
-        // // setProcessCmd(m_comboDeviceCmd.getSelectedIndex(),
-        // m_strSelectedDevice);
-        // }
-        // });
 
         m_btnClear = new JButton("Clear");
         m_btnClear.setMargin(new Insets(0, 0, 0, 0));
@@ -1360,19 +1357,22 @@ public class LogFilterMain extends JFrame implements INotiEvent {
         return mainP;
     }
 
-    Component getTabPanel() {
-        m_tpTab = new JTabbedPane();
+    Component getLogPanel() {
         m_tmLogTableModel = new LogFilterTableModel();
         m_tmLogTableModel.setData(m_arLogInfoAll);
         m_tbLogTable = new LogTable(m_tmLogTableModel, this);
         m_iLogParser = new LogCatParser();
-        getLogTable().setLogParser(m_iLogParser);
+        m_tbLogTable.setLogParser(m_iLogParser);
+        m_logScrollVBar = new JScrollPane(m_tbLogTable);
 
-        m_scrollVBar = new JScrollPane(getLogTable());
+        m_tSubLogTableModel = new LogFilterTableModel();
+        m_tSubLogTableModel.setData(m_arSubLogInfoAll);
+        m_tSublogTable = new SubLogTable(m_tSubLogTableModel, this);
 
-        m_tpTab.addTab("Log", m_scrollVBar);
+        m_subLogScrollVBar = new JScrollPane(m_tSublogTable);
 
-        return m_scrollVBar;
+        mSplitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT, m_logScrollVBar, m_subLogScrollVBar);
+        return mSplitPane;
     }
 
     void initValue() {
@@ -1384,10 +1384,11 @@ public class LogFilterMain extends JFrame implements INotiEvent {
 
         m_arLogInfoAll = new ArrayList<LogInfo>();
         m_arLogInfoFiltered = new ArrayList<LogInfo>();
-        m_hmBookmarkAll = new HashMap<Integer, Integer>();
-        m_hmBookmarkFiltered = new HashMap<Integer, Integer>();
+        m_hmMarkedInfoAll = new HashMap<Integer, Integer>();
+        m_hmMarkedInfoFiltered = new HashMap<Integer, Integer>();
         m_hmErrorAll = new ConcurrentHashMap<Integer, Integer>();
         m_hmErrorFiltered = new ConcurrentHashMap<Integer, Integer>();
+        m_arSubLogInfoAll = new ArrayList<>();
 
         File confDir = new File(CONFIG_BASE_DIR);
         if (!confDir.exists()) {
@@ -1431,6 +1432,7 @@ public class LogFilterMain extends JFrame implements INotiEvent {
                     setStatus("Parsing");
                     clearData();
                     getLogTable().clearSelection();
+                    getSubTable().clearSelection();
 
                     boolean inSystemLog = false;
                     boolean inDumpServiceLog = false;
@@ -1447,19 +1449,19 @@ public class LogFilterMain extends JFrame implements INotiEvent {
                             inDumpServiceLog = true;
 
                             LogInfo dumpHeader = new LogInfo();
-                            dumpHeader.m_strMessage = "===================================";
-                            dumpHeader.m_strLogLV = "D";
-                            dumpHeader.mType = LogInfo.TYPE.DUMP_OF_SERVICE;
-                            dumpHeader.m_TextColor = m_iLogParser.getColor(dumpHeader);
-                            dumpHeader.m_intLine = nIndex++;
+                            dumpHeader.setMessage("===================================");
+                            dumpHeader.setLogLV("D");
+                            dumpHeader.setType(LogInfo.TYPE.DUMP_OF_SERVICE);
+                            dumpHeader.setTextColor(m_iLogParser.getColor(dumpHeader));
+                            dumpHeader.setLine(nIndex++);
                             addLogInfo(dumpHeader);
 
                             LogInfo dumpName = new LogInfo();
-                            dumpName.m_strMessage = strLine;
-                            dumpName.m_strLogLV = "D";
-                            dumpName.mType = LogInfo.TYPE.DUMP_OF_SERVICE;
-                            dumpName.m_TextColor = m_iLogParser.getColor(dumpName);
-                            dumpName.m_intLine = nIndex++;
+                            dumpName.setMessage(strLine);
+                            dumpName.setLogLV("D");
+                            dumpName.setType(LogInfo.TYPE.DUMP_OF_SERVICE);
+                            dumpName.setTextColor(m_iLogParser.getColor(dumpName));
+                            dumpName.setLine(nIndex++);
                             addLogInfo(dumpName);
 
                             DumpOfServiceInfo dumpOfServiceInfo = new DumpOfServiceInfo(strLine, nIndex - 2);
@@ -1472,14 +1474,14 @@ public class LogFilterMain extends JFrame implements INotiEvent {
 
                         if (inDumpServiceLog && !"".equals(strLine.trim())) {
                             LogInfo logInfo = new LogInfo();
-                            logInfo.mType = LogInfo.TYPE.DUMP_OF_SERVICE;
-                            logInfo.m_strMessage = strLine;
-                            logInfo.m_intLine = nIndex++;
+                            logInfo.setType(LogInfo.TYPE.DUMP_OF_SERVICE);
+                            logInfo.setMessage(strLine);
+                            logInfo.setLine(nIndex++);
                             addLogInfo(logInfo);
                         } else if (inSystemLog && !"".equals(strLine.trim())) {
                             LogInfo logInfo = m_iLogParser.parseLog(strLine);
-                            logInfo.mType = LogInfo.TYPE.SYSTEM;
-                            logInfo.m_intLine = nIndex++;
+                            logInfo.setType(LogInfo.TYPE.SYSTEM);
+                            logInfo.setLine(nIndex++);
                             addLogInfo(logInfo);
                         }
                     }
@@ -1514,7 +1516,7 @@ public class LogFilterMain extends JFrame implements INotiEvent {
 
     void setBookmark(int nLine, String strBookmark) {
         LogInfo logInfo = m_arLogInfoAll.get(nLine);
-        logInfo.m_strBookmark = strBookmark;
+        logInfo.setBookmark(strBookmark);
         m_arLogInfoAll.set(nLine, logInfo);
     }
 
@@ -1609,31 +1611,54 @@ public class LogFilterMain extends JFrame implements INotiEvent {
     }
 
     void useFilter(JCheckBox checkBox) {
-        if (checkBox.equals(m_chkEnableFind))
+        if (checkBox.equals(m_chkEnableFind)) {
             getLogTable().setFilterFind(checkBox.isSelected() ? m_tfFindWord
                     .getText() : "");
-        if (checkBox.equals(m_chkEnableRemove))
+            getSubTable().SetHighlight(checkBox.isSelected() ? m_tfFindWord
+                    .getText() : "");
+        }
+        if (checkBox.equals(m_chkEnableRemove)) {
             getLogTable().SetFilterRemove(checkBox.isSelected() ? m_tfRemoveWord
                     .getText() : "");
-        if (checkBox.equals(m_chkEnableShowPid))
+            getSubTable().SetHighlight(checkBox.isSelected() ? m_tfRemoveWord
+                    .getText() : "");
+        }
+        if (checkBox.equals(m_chkEnableShowPid)) {
             getLogTable().SetFilterShowPid(checkBox.isSelected() ? m_tfShowPid
                     .getText() : "");
-        if (checkBox.equals(m_chkEnableShowTid))
+            getSubTable().SetHighlight(checkBox.isSelected() ? m_tfShowPid
+                    .getText() : "");
+        }
+        if (checkBox.equals(m_chkEnableShowTid)) {
             getLogTable().SetFilterShowTid(checkBox.isSelected() ? m_tfShowTid
                     .getText() : "");
-        if (checkBox.equals(m_chkEnableShowTag))
+            getSubTable().SetHighlight(checkBox.isSelected() ? m_tfShowTid
+                    .getText() : "");
+        }
+        if (checkBox.equals(m_chkEnableShowTag)) {
             getLogTable().SetFilterShowTag(checkBox.isSelected() ? m_tfShowTag
                     .getText() : "");
-        if (checkBox.equals(m_chkEnableRemoveTag))
-            getLogTable()
-                    .SetFilterRemoveTag(checkBox.isSelected() ? m_tfRemoveTag
-                            .getText() : "");
-        if (checkBox.equals(m_chkEnableBookmarkTag))
+            getSubTable().SetHighlight(checkBox.isSelected() ? m_tfShowTag
+                    .getText() : "");
+        }
+        if (checkBox.equals(m_chkEnableRemoveTag)) {
+            getLogTable().SetFilterRemoveTag(checkBox.isSelected() ? m_tfRemoveTag
+                    .getText() : "");
+            getSubTable().SetHighlight(checkBox.isSelected() ? m_tfRemoveTag
+                    .getText() : "");
+        }
+        if (checkBox.equals(m_chkEnableBookmarkTag)) {
             getLogTable().SetFilterBookmarkTag(checkBox.isSelected() ? m_tfBookmarkTag
                     .getText() : "");
-        if (checkBox.equals(m_chkEnableHighlight))
+            getSubTable().SetHighlight(checkBox.isSelected() ? m_tfBookmarkTag
+                    .getText() : "");
+        }
+        if (checkBox.equals(m_chkEnableHighlight)) {
             getLogTable().SetHighlight(checkBox.isSelected() ? m_tfHighlight
                     .getText() : "");
+            getSubTable().SetHighlight(checkBox.isSelected() ? m_tfHighlight
+                    .getText() : "");
+        }
         if (checkBox.equals(m_chkEnableTimeTag)) {
             if (checkBox.isSelected()) {
                 getLogTable().SetFilterFromTime(m_tfFromTimeTag.getText());
@@ -1751,7 +1776,7 @@ public class LogFilterMain extends JFrame implements INotiEvent {
                                         && !"".equals(strLine.trim())) {
                                     LogInfo logInfo = m_iLogParser
                                             .parseLog(strLine);
-                                    logInfo.m_intLine = nLine++;
+                                    logInfo.setLine(nLine++);
                                     addLogInfo(logInfo);
                                     nAddCount++;
                                 }
@@ -1764,12 +1789,12 @@ public class LogFilterMain extends JFrame implements INotiEvent {
                             if (m_bUserFilter == false) {
                                 m_tmLogTableModel.setData(m_arLogInfoAll);
                                 m_ipIndicator.setData(m_arLogInfoAll,
-                                        m_hmBookmarkAll, m_hmErrorAll);
+                                        m_hmMarkedInfoAll, m_hmErrorAll);
                             } else {
                                 m_tmLogTableModel.setData(m_arLogInfoFiltered);
                                 m_ipIndicator
                                         .setData(m_arLogInfoFiltered,
-                                                m_hmBookmarkFiltered,
+                                                m_hmMarkedInfoFiltered,
                                                 m_hmErrorFiltered);
                             }
 
@@ -1826,20 +1851,21 @@ public class LogFilterMain extends JFrame implements INotiEvent {
                             m_nChangedFilter = STATUS_PARSING;
 
                             m_arLogInfoFiltered.clear();
-                            m_hmBookmarkFiltered.clear();
+                            m_hmMarkedInfoFiltered.clear();
                             m_hmErrorFiltered.clear();
                             getLogTable().clearSelection();
+                            getSubTable().clearSelection();
 
                             if (m_bUserFilter == false) {
                                 m_tmLogTableModel.setData(m_arLogInfoAll);
                                 m_ipIndicator.setData(m_arLogInfoAll,
-                                        m_hmBookmarkAll, m_hmErrorAll);
+                                        m_hmMarkedInfoAll, m_hmErrorAll);
                                 LogInfo latestInfo = getLogTable().getLatestSelectedLogInfo();
                                 if (latestInfo != null) {
                                     int i = 0;
                                     for (LogInfo info : m_arLogInfoAll) {
                                         i++;
-                                        if (info.m_intLine >= latestInfo.m_intLine) {
+                                        if (info.getLine() >= latestInfo.getLine()) {
                                             break;
                                         }
                                     }
@@ -1852,7 +1878,7 @@ public class LogFilterMain extends JFrame implements INotiEvent {
                             }
                             m_tmLogTableModel.setData(m_arLogInfoFiltered);
                             m_ipIndicator.setData(m_arLogInfoFiltered,
-                                    m_hmBookmarkFiltered, m_hmErrorFiltered);
+                                    m_hmMarkedInfoFiltered, m_hmErrorFiltered);
                             // updateTable(-1);
                             setStatus("Parsing");
 
@@ -1871,27 +1897,27 @@ public class LogFilterMain extends JFrame implements INotiEvent {
                                 if (m_ipIndicator.m_chBookmark.isSelected()
                                         || m_ipIndicator.m_chError.isSelected()) {
                                     bAddFilteredArray = false;
-                                    if (logInfo.m_bMarked
+                                    if (logInfo.isMarked()
                                             && m_ipIndicator.m_chBookmark
                                             .isSelected()) {
                                         bAddFilteredArray = true;
-                                        m_hmBookmarkFiltered.put(logInfo.m_intLine - 1,
+                                        m_hmMarkedInfoFiltered.put(logInfo.getLine() - 1,
                                                 m_arLogInfoFiltered.size());
-                                        if (logInfo.m_strLogLV.equals("E")
-                                                || logInfo.m_strLogLV
+                                        if (logInfo.getLogLV().equals("E")
+                                                || logInfo.getLogLV()
                                                 .equals("ERROR"))
-                                            m_hmErrorFiltered.put(logInfo.m_intLine - 1,
+                                            m_hmErrorFiltered.put(logInfo.getLine() - 1,
                                                     m_arLogInfoFiltered.size());
                                     }
-                                    if ((logInfo.m_strLogLV.equals("E") || logInfo.m_strLogLV
+                                    if ((logInfo.getLogLV().equals("E") || logInfo.getLogLV()
                                             .equals("ERROR"))
                                             && m_ipIndicator.m_chError
                                             .isSelected()) {
                                         bAddFilteredArray = true;
-                                        m_hmErrorFiltered.put(logInfo.m_intLine - 1,
+                                        m_hmErrorFiltered.put(logInfo.getLine() - 1,
                                                 m_arLogInfoFiltered.size());
-                                        if (logInfo.m_bMarked)
-                                            m_hmBookmarkFiltered.put(logInfo.m_intLine - 1,
+                                        if (logInfo.isMarked())
+                                            m_hmMarkedInfoFiltered.put(logInfo.getLine() - 1,
                                                     m_arLogInfoFiltered.size());
                                     }
 
@@ -1908,13 +1934,13 @@ public class LogFilterMain extends JFrame implements INotiEvent {
                                         && checkToTimeFilter(logInfo)
                                         && checkBookmarkFilter(logInfo)) {
                                     m_arLogInfoFiltered.add(logInfo);
-                                    if (logInfo.m_bMarked)
-                                        m_hmBookmarkFiltered.put(logInfo.m_intLine - 1,
+                                    if (logInfo.isMarked())
+                                        m_hmMarkedInfoFiltered.put(logInfo.getLine() - 1,
                                                 m_arLogInfoFiltered.size());
-                                    if (logInfo.m_strLogLV.equals("E")
-                                            || logInfo.m_strLogLV
+                                    if (logInfo.getLogLV().equals("E")
+                                            || logInfo.getLogLV()
                                             .equals("ERROR"))
-                                        m_hmErrorFiltered.put(logInfo.m_intLine - 1,
+                                        m_hmErrorFiltered.put(logInfo.getLine() - 1,
                                                 m_arLogInfoFiltered.size());
                                 }
                             }
@@ -1923,14 +1949,14 @@ public class LogFilterMain extends JFrame implements INotiEvent {
                                 m_tmLogTableModel.setData(m_arLogInfoFiltered);
                                 m_ipIndicator
                                         .setData(m_arLogInfoFiltered,
-                                                m_hmBookmarkFiltered,
+                                                m_hmMarkedInfoFiltered,
                                                 m_hmErrorFiltered);
                                 LogInfo latestInfo = getLogTable().getLatestSelectedLogInfo();
                                 if (latestInfo != null) {
                                     int i = 0;
                                     for (LogInfo info : m_arLogInfoFiltered) {
                                         i++;
-                                        if (info.m_intLine >= latestInfo.m_intLine) {
+                                        if (info.getLine() >= latestInfo.getLine()) {
                                             break;
                                         }
                                     }
@@ -1954,6 +1980,7 @@ public class LogFilterMain extends JFrame implements INotiEvent {
     void startProcess() {
         clearData();
         getLogTable().clearSelection();
+        getSubTable().clearSelection();
         m_thProcess = new Thread(new Runnable() {
             public void run() {
                 try {
@@ -1999,27 +2026,27 @@ public class LogFilterMain extends JFrame implements INotiEvent {
         if (m_nFilterLogLV == LogInfo.LOG_LV_ALL)
             return true;
         if ((m_nFilterLogLV & LogInfo.LOG_LV_VERBOSE) != 0
-                && (logInfo.m_strLogLV.equals("V") || logInfo.m_strLogLV
+                && (logInfo.getLogLV().equals("V") || logInfo.getLogLV()
                 .equals("VERBOSE")))
             return true;
         if ((m_nFilterLogLV & LogInfo.LOG_LV_DEBUG) != 0
-                && (logInfo.m_strLogLV.equals("D") || logInfo.m_strLogLV
+                && (logInfo.getLogLV().equals("D") || logInfo.getLogLV()
                 .equals("DEBUG")))
             return true;
         if ((m_nFilterLogLV & LogInfo.LOG_LV_INFO) != 0
-                && (logInfo.m_strLogLV.equals("I") || logInfo.m_strLogLV
+                && (logInfo.getLogLV().equals("I") || logInfo.getLogLV()
                 .equals("INFO")))
             return true;
         if ((m_nFilterLogLV & LogInfo.LOG_LV_WARN) != 0
-                && (logInfo.m_strLogLV.equals("W") || logInfo.m_strLogLV
+                && (logInfo.getLogLV().equals("W") || logInfo.getLogLV()
                 .equals("WARN")))
             return true;
         if ((m_nFilterLogLV & LogInfo.LOG_LV_ERROR) != 0
-                && (logInfo.m_strLogLV.equals("E") || logInfo.m_strLogLV
+                && (logInfo.getLogLV().equals("E") || logInfo.getLogLV()
                 .equals("ERROR")))
             return true;
         if ((m_nFilterLogLV & LogInfo.LOG_LV_FATAL) != 0
-                && (logInfo.m_strLogLV.equals("F") || logInfo.m_strLogLV
+                && (logInfo.getLogLV().equals("F") || logInfo.getLogLV()
                 .equals("FATAL")))
             return true;
 
@@ -2034,7 +2061,7 @@ public class LogFilterMain extends JFrame implements INotiEvent {
                 getLogTable().GetFilterShowPid(), "|", false);
 
         while (stk.hasMoreElements()) {
-            if (logInfo.m_strPid.toLowerCase().contains(
+            if (logInfo.getPid().toLowerCase().contains(
                     stk.nextToken().toLowerCase()))
                 return true;
         }
@@ -2050,7 +2077,7 @@ public class LogFilterMain extends JFrame implements INotiEvent {
                 getLogTable().GetFilterShowTid(), "|", false);
 
         while (stk.hasMoreElements()) {
-            if (logInfo.m_strThread.toLowerCase().contains(
+            if (logInfo.getThread().toLowerCase().contains(
                     stk.nextToken().toLowerCase()))
                 return true;
         }
@@ -2066,7 +2093,7 @@ public class LogFilterMain extends JFrame implements INotiEvent {
                 "|", false);
 
         while (stk.hasMoreElements()) {
-            if (logInfo.m_strMessage.toLowerCase().contains(
+            if (logInfo.getMessage().toLowerCase().contains(
                     stk.nextToken().toLowerCase()))
                 return true;
         }
@@ -2082,7 +2109,7 @@ public class LogFilterMain extends JFrame implements INotiEvent {
                 getLogTable().GetFilterRemove(), "|", false);
 
         while (stk.hasMoreElements()) {
-            if (logInfo.m_strMessage.toLowerCase().contains(
+            if (logInfo.getMessage().toLowerCase().contains(
                     stk.nextToken().toLowerCase()))
                 return false;
         }
@@ -2098,7 +2125,7 @@ public class LogFilterMain extends JFrame implements INotiEvent {
                 getLogTable().GetFilterShowTag(), "|", false);
 
         while (stk.hasMoreElements()) {
-            if (logInfo.m_strTag.toLowerCase().contains(
+            if (logInfo.getTag().toLowerCase().contains(
                     stk.nextToken().toLowerCase()))
                 return true;
         }
@@ -2114,7 +2141,7 @@ public class LogFilterMain extends JFrame implements INotiEvent {
                 getLogTable().GetFilterRemoveTag(), "|", false);
 
         while (stk.hasMoreElements()) {
-            if (logInfo.m_strTag.toLowerCase().contains(
+            if (logInfo.getTag().toLowerCase().contains(
                     stk.nextToken().toLowerCase()))
                 return false;
         }
@@ -2123,14 +2150,14 @@ public class LogFilterMain extends JFrame implements INotiEvent {
     }
 
     boolean checkBookmarkFilter(LogInfo logInfo) {
-        if (getLogTable().GetFilterBookmarkTag().length() <= 0 && logInfo.m_strBookmark.length() <= 0)
+        if (getLogTable().GetFilterBookmarkTag().length() <= 0 && logInfo.getBookmark().length() <= 0)
             return true;
 
         StringTokenizer stk = new StringTokenizer(
                 getLogTable().GetFilterBookmarkTag(), "|", false);
 
         while (stk.hasMoreElements()) {
-            if (logInfo.m_strBookmark.toLowerCase().contains(
+            if (logInfo.getBookmark().toLowerCase().contains(
                     stk.nextToken().toLowerCase()))
                 return true;
         }
@@ -2139,21 +2166,21 @@ public class LogFilterMain extends JFrame implements INotiEvent {
     }
 
     boolean checkToTimeFilter(LogInfo logInfo) {
-        if (logInfo.m_timestamp == -1)
+        if (logInfo.getTimestamp() == -1)
             return false;
         if (getLogTable().GetFilterToTime() == -1) {
             return true;
         }
-        return logInfo.m_timestamp <= getLogTable().GetFilterToTime();
+        return logInfo.getTimestamp() <= getLogTable().GetFilterToTime();
     }
 
     boolean checkFromTimeFilter(LogInfo logInfo) {
-        if (logInfo.m_timestamp == -1)
+        if (logInfo.getTimestamp() == -1)
             return false;
         if (getLogTable().GetFilterFromTime() == -1) {
             return true;
         }
-        return logInfo.m_timestamp >= getLogTable().GetFilterFromTime();
+        return logInfo.getTimestamp() >= getLogTable().GetFilterFromTime();
     }
 
     boolean checkUseFilter() {
@@ -2182,6 +2209,8 @@ public class LogFilterMain extends JFrame implements INotiEvent {
             else if (e.getSource().equals(m_btnSetFont)) {
                 getLogTable().setFontSize(Integer.parseInt(m_tfFontSize
                         .getText()));
+                getSubTable().setFontSize(Integer.parseInt(m_tfFontSize
+                        .getText()));
                 updateTable(-1, false);
             } else if (e.getSource().equals(m_btnRun)) {
                 startProcess();
@@ -2208,7 +2237,7 @@ public class LogFilterMain extends JFrame implements INotiEvent {
     };
 
     public void notiEvent(EventParam param) {
-        switch (param.nEventId) {
+        switch (param.type) {
             case EVENT_CLICK_BOOKMARK:
             case EVENT_CLICK_ERROR:
                 m_nChangedFilter = STATUS_CHANGE;
@@ -2230,60 +2259,87 @@ public class LogFilterMain extends JFrame implements INotiEvent {
                 m_tfToTimeTag.setText(toTimeStr);
             }
             break;
+            case EVENT_CHANGE_SELECTION: {
+                LogInfo target = (LogInfo) param.param1;
+                m_tbLogTable.changeSelection(target, false, false);
+            }
+            break;
         }
     }
 
     void updateTable(int nRow, boolean bMove) {
         // System.out.println("updateTable nRow:" + nRow + " | " + bMove);
-        m_tmLogTableModel.fireTableRowsUpdated(0,
-                m_tmLogTableModel.getRowCount() - 1);
-        m_scrollVBar.validate();
+        m_tmLogTableModel.fireTableDataChanged();
+        m_logScrollVBar.validate();
         // if(nRow >= 0)
         // m_tbLogTable.changeSelection(nRow, 0, false, false);
         getLogTable().invalidate();
         getLogTable().repaint();
         if (nRow >= 0)
             getLogTable().changeSelection(nRow, 0, false, false, bMove);
+
+        updateSubTable(nRow, bMove);
+    }
+
+    void updateSubTable(int nRow, boolean bMove) {
+//        System.out.println("updateSubTable nRow:" + nRow + " | " + bMove);
+        m_tSubLogTableModel.fireTableDataChanged();
+        m_subLogScrollVBar.validate();
+        getSubTable().invalidate();
+        getSubTable().repaint();
+        if (nRow >= 0)
+            getSubTable().changeSelection(nRow, 0, false, false, bMove);
     }
 
     DocumentListener m_dlFilterListener = new DocumentListener() {
         public void changedUpdate(DocumentEvent arg0) {
             try {
                 if (arg0.getDocument().equals(m_tfFindWord.getDocument())
-                        && m_chkEnableFind.isSelected())
+                        && m_chkEnableFind.isSelected()) {
                     getLogTable().setFilterFind(arg0.getDocument().getText(0,
                             arg0.getDocument().getLength()));
+                }
                 else if (arg0.getDocument()
                         .equals(m_tfRemoveWord.getDocument())
-                        && m_chkEnableRemove.isSelected())
+                        && m_chkEnableRemove.isSelected()) {
                     getLogTable().SetFilterRemove(arg0.getDocument().getText(0,
                             arg0.getDocument().getLength()));
+                }
                 else if (arg0.getDocument().equals(m_tfShowPid.getDocument())
-                        && m_chkEnableShowPid.isSelected())
+                        && m_chkEnableShowPid.isSelected()) {
                     getLogTable().SetFilterShowPid(arg0.getDocument().getText(0,
                             arg0.getDocument().getLength()));
+                }
                 else if (arg0.getDocument().equals(m_tfShowTid.getDocument())
-                        && m_chkEnableShowTid.isSelected())
+                        && m_chkEnableShowTid.isSelected()) {
                     getLogTable().SetFilterShowTid(arg0.getDocument().getText(0,
                             arg0.getDocument().getLength()));
+                }
                 else if (arg0.getDocument().equals(m_tfShowTag.getDocument())
-                        && m_chkEnableShowTag.isSelected())
+                        && m_chkEnableShowTag.isSelected()) {
                     getLogTable().SetFilterShowTag(arg0.getDocument().getText(0,
                             arg0.getDocument().getLength()));
+                }
                 else if (arg0.getDocument().equals(m_tfRemoveTag.getDocument())
-                        && m_chkEnableRemoveTag.isSelected())
+                        && m_chkEnableRemoveTag.isSelected()) {
                     getLogTable().SetFilterRemoveTag(arg0.getDocument().getText(
                             0, arg0.getDocument().getLength()));
+                }
                 else if (arg0.getDocument().equals(m_tfBookmarkTag.getDocument())
-                        && m_chkEnableBookmarkTag.isSelected())
+                        && m_chkEnableBookmarkTag.isSelected()) {
                     getLogTable().SetFilterBookmarkTag(arg0.getDocument().getText(
                             0, arg0.getDocument().getLength()));
+                }
                 else if (arg0.getDocument().equals(m_tfHighlight.getDocument())
-                        && m_chkEnableHighlight.isSelected())
+                        && m_chkEnableHighlight.isSelected()) {
                     getLogTable().SetHighlight(arg0.getDocument().getText(0,
                             arg0.getDocument().getLength()));
-                else if (arg0.getDocument().equals(m_tfSearch.getDocument())) {
+                    getSubTable().SetHighlight(arg0.getDocument().getText(0,
+                            arg0.getDocument().getLength()));
+                } else if (arg0.getDocument().equals(m_tfSearch.getDocument())) {
                     getLogTable().SetSearchHighlight(arg0.getDocument().getText(0,
+                            arg0.getDocument().getLength()));
+                    getSubTable().SetSearchHighlight(arg0.getDocument().getText(0,
                             arg0.getDocument().getLength()));
                     getLogTable().gotoNextSearchResult();
                 } else if (arg0.getDocument().equals(m_tfFromTimeTag.getDocument())) {
@@ -2330,11 +2386,16 @@ public class LogFilterMain extends JFrame implements INotiEvent {
                     getLogTable().SetFilterBookmarkTag(arg0.getDocument().getText(
                             0, arg0.getDocument().getLength()));
                 else if (arg0.getDocument().equals(m_tfHighlight.getDocument())
-                        && m_chkEnableHighlight.isSelected())
+                        && m_chkEnableHighlight.isSelected()) {
                     getLogTable().SetHighlight(arg0.getDocument().getText(0,
                             arg0.getDocument().getLength()));
+                    getSubTable().SetHighlight(arg0.getDocument().getText(0,
+                            arg0.getDocument().getLength()));
+                }
                 else if (arg0.getDocument().equals(m_tfSearch.getDocument())) {
                     getLogTable().SetSearchHighlight(arg0.getDocument().getText(0,
+                            arg0.getDocument().getLength()));
+                    getSubTable().SetSearchHighlight(arg0.getDocument().getText(0,
                             arg0.getDocument().getLength()));
                     getLogTable().gotoNextSearchResult();
                 } else if (arg0.getDocument().equals(m_tfFromTimeTag.getDocument())) {
@@ -2381,11 +2442,16 @@ public class LogFilterMain extends JFrame implements INotiEvent {
                     getLogTable().SetFilterBookmarkTag(arg0.getDocument().getText(
                             0, arg0.getDocument().getLength()));
                 else if (arg0.getDocument().equals(m_tfHighlight.getDocument())
-                        && m_chkEnableHighlight.isSelected())
+                        && m_chkEnableHighlight.isSelected()) {
                     getLogTable().SetHighlight(arg0.getDocument().getText(0,
                             arg0.getDocument().getLength()));
+                    getSubTable().SetHighlight(arg0.getDocument().getText(0,
+                            arg0.getDocument().getLength()));
+                }
                 else if (arg0.getDocument().equals(m_tfSearch.getDocument())) {
                     getLogTable().SetSearchHighlight(arg0.getDocument().getText(0,
+                            arg0.getDocument().getLength()));
+                    getSubTable().SetSearchHighlight(arg0.getDocument().getText(0,
                             arg0.getDocument().getLength()));
                     getLogTable().gotoNextSearchResult();
                 } else if (arg0.getDocument().equals(m_tfFromTimeTag.getDocument())) {
@@ -2426,6 +2492,25 @@ public class LogFilterMain extends JFrame implements INotiEvent {
                 m_chkClmTag.isSelected());
         getLogTable().showColumn(LogFilterTableModel.COMUMN_MESSAGE,
                 m_chkClmMessage.isSelected());
+
+        getSubTable().showColumn(LogFilterTableModel.COMUMN_BOOKMARK,
+                m_chkClmBookmark.isSelected());
+        getSubTable().showColumn(LogFilterTableModel.COMUMN_LINE,
+                m_chkClmLine.isSelected());
+        getSubTable().showColumn(LogFilterTableModel.COMUMN_DATE,
+                m_chkClmDate.isSelected());
+        getSubTable().showColumn(LogFilterTableModel.COMUMN_TIME,
+                m_chkClmTime.isSelected());
+        getSubTable().showColumn(LogFilterTableModel.COMUMN_LOGLV,
+                m_chkClmLogLV.isSelected());
+        getSubTable().showColumn(LogFilterTableModel.COMUMN_PID,
+                m_chkClmPid.isSelected());
+        getSubTable().showColumn(LogFilterTableModel.COMUMN_THREAD,
+                m_chkClmThread.isSelected());
+        getSubTable().showColumn(LogFilterTableModel.COMUMN_TAG,
+                m_chkClmTag.isSelected());
+        getSubTable().showColumn(LogFilterTableModel.COMUMN_MESSAGE,
+                m_chkClmMessage.isSelected());
     }
 
     ItemListener m_itemListener = new ItemListener() {
@@ -2447,29 +2532,47 @@ public class LogFilterMain extends JFrame implements INotiEvent {
             } else if (check.equals(m_chkClmBookmark)) {
                 getLogTable().showColumn(LogFilterTableModel.COMUMN_BOOKMARK,
                         check.isSelected());
+                getSubTable().showColumn(LogFilterTableModel.COMUMN_BOOKMARK,
+                        check.isSelected());
             } else if (check.equals(m_chkClmLine)) {
                 getLogTable().showColumn(LogFilterTableModel.COMUMN_LINE,
+                        check.isSelected());
+                getSubTable().showColumn(LogFilterTableModel.COMUMN_LINE,
                         check.isSelected());
             } else if (check.equals(m_chkClmDate)) {
                 getLogTable().showColumn(LogFilterTableModel.COMUMN_DATE,
                         check.isSelected());
+                getSubTable().showColumn(LogFilterTableModel.COMUMN_DATE,
+                        check.isSelected());
             } else if (check.equals(m_chkClmTime)) {
                 getLogTable().showColumn(LogFilterTableModel.COMUMN_TIME,
+                        check.isSelected());
+                getSubTable().showColumn(LogFilterTableModel.COMUMN_TIME,
                         check.isSelected());
             } else if (check.equals(m_chkClmLogLV)) {
                 getLogTable().showColumn(LogFilterTableModel.COMUMN_LOGLV,
                         check.isSelected());
+                getSubTable().showColumn(LogFilterTableModel.COMUMN_LOGLV,
+                        check.isSelected());
             } else if (check.equals(m_chkClmPid)) {
                 getLogTable().showColumn(LogFilterTableModel.COMUMN_PID,
+                        check.isSelected());
+                getSubTable().showColumn(LogFilterTableModel.COMUMN_PID,
                         check.isSelected());
             } else if (check.equals(m_chkClmThread)) {
                 getLogTable().showColumn(LogFilterTableModel.COMUMN_THREAD,
                         check.isSelected());
+                getSubTable().showColumn(LogFilterTableModel.COMUMN_THREAD,
+                        check.isSelected());
             } else if (check.equals(m_chkClmTag)) {
                 getLogTable().showColumn(LogFilterTableModel.COMUMN_TAG,
                         check.isSelected());
+                getSubTable().showColumn(LogFilterTableModel.COMUMN_TAG,
+                        check.isSelected());
             } else if (check.equals(m_chkClmMessage)) {
                 getLogTable().showColumn(LogFilterTableModel.COMUMN_MESSAGE,
+                        check.isSelected());
+                getSubTable().showColumn(LogFilterTableModel.COMUMN_MESSAGE,
                         check.isSelected());
             } else if (check.equals(m_chkEnableFind)
                     || check.equals(m_chkEnableRemove)
@@ -2496,8 +2599,8 @@ public class LogFilterMain extends JFrame implements INotiEvent {
                         int[] arSelectedRow = getLogTable().getSelectedRows();
                         for (int nIndex : arSelectedRow) {
                             LogInfo logInfo = m_tmLogTableModel.getRow(nIndex);
-                            logInfo.m_bMarked = !logInfo.m_bMarked;
-                            bookmarkItem(nIndex, logInfo.m_intLine - 1, logInfo.m_bMarked);
+                            logInfo.setMarked(!logInfo.isMarked());
+                            bookmarkItem(nIndex, logInfo.getLine() - 1, logInfo.isMarked());
                         }
                         getLogTable().repaint();
                     } else if (!e.isControlDown() && e.getID() == KeyEvent.KEY_PRESSED)
@@ -2628,6 +2731,10 @@ public class LogFilterMain extends JFrame implements INotiEvent {
         return m_tbLogTable;
     }
 
+    public SubLogTable getSubTable() {
+        return m_tSublogTable;
+    }
+
     public void searchSimilar(String cmd) {
         m_tbLogTable.searchSimilarForward(cmd);
     }
@@ -2660,9 +2767,9 @@ public class LogFilterMain extends JFrame implements INotiEvent {
         @Override
         public void adjustmentValueChanged(AdjustmentEvent e) {
             JScrollBar scrollBar = (JScrollBar) e.getSource();
-            if (scrollBar == m_scrollVBar.getHorizontalScrollBar()) {
+            if (scrollBar == m_logScrollVBar.getHorizontalScrollBar()) {
                 T.d("HorizontalScrollBar: " + scrollBar.getValue());
-            } else if (scrollBar == m_scrollVBar.getVerticalScrollBar()) {
+            } else if (scrollBar == m_logScrollVBar.getVerticalScrollBar()) {
                 mDiffService.writeDiffCommand(
                         DiffService.DiffServiceCmdType.SYNC_SCROLL_V,
                         String.valueOf(scrollBar.getValue() - mLastVBarValue)
@@ -2675,11 +2782,11 @@ public class LogFilterMain extends JFrame implements INotiEvent {
     public void enableSyncScroll(boolean enable) {
         mSyncScrollEnable = enable;
         if (mSyncScrollEnable) {
-//            m_scrollVBar.getHorizontalScrollBar().addAdjustmentListener(mScrollListener);
-            m_scrollVBar.getVerticalScrollBar().addAdjustmentListener(mScrollListener);
+//            m_logScrollVBar.getHorizontalScrollBar().addAdjustmentListener(mScrollListener);
+            m_logScrollVBar.getVerticalScrollBar().addAdjustmentListener(mScrollListener);
         } else {
-//            m_scrollVBar.getHorizontalScrollBar().removeAdjustmentListener(mScrollListener);
-            m_scrollVBar.getVerticalScrollBar().removeAdjustmentListener(mScrollListener);
+//            m_logScrollVBar.getHorizontalScrollBar().removeAdjustmentListener(mScrollListener);
+            m_logScrollVBar.getVerticalScrollBar().removeAdjustmentListener(mScrollListener);
         }
     }
 
@@ -2689,7 +2796,7 @@ public class LogFilterMain extends JFrame implements INotiEvent {
     }
 
     public void handleScrollVSyncEvent(String cmd) {
-        JScrollBar scrollBar = m_scrollVBar.getVerticalScrollBar();
+        JScrollBar scrollBar = m_logScrollVBar.getVerticalScrollBar();
         int scrollChanged = Integer.valueOf(cmd);
         int newValue = scrollBar.getValue() + scrollChanged;
 
@@ -2702,12 +2809,12 @@ public class LogFilterMain extends JFrame implements INotiEvent {
             if (lastRowIndex > rowIndex) {
                 mDiffService.writeDiffCommand(
                         DiffService.DiffServiceCmdType.SYNC_SELECTED_BACKWARD,
-                        logInfo.m_strMessage
+                        logInfo.getMessage()
                 );
             } else {
                 mDiffService.writeDiffCommand(
                         DiffService.DiffServiceCmdType.SYNC_SELECTED_FORWARD,
-                        logInfo.m_strMessage
+                        logInfo.getMessage()
                 );
             }
         }
