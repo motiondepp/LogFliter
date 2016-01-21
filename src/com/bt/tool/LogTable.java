@@ -552,7 +552,7 @@ public class LogTable extends JTable implements FocusListener, ActionListener {
 //            this, col.getHeaderValue(), false, false, 0, 0);
 //        width = comp.getPreferredSize().width;
 
-        JViewport viewport = m_LogFilterMain.m_logScrollVBar.getViewport();
+        JViewport viewport = m_LogFilterMain.m_logScrollVPane.getViewport();
         Rectangle viewRect = viewport.getViewRect();
         int nFirst = m_LogFilterMain.getLogTable().rowAtPoint(new Point(0, viewRect.y));
         int nLast = m_LogFilterMain.getLogTable().rowAtPoint(new Point(0, viewRect.height - 1));

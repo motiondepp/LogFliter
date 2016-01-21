@@ -218,7 +218,7 @@ public class SubLogTable extends JTable implements FocusListener, ActionListener
         TableColumn col = colModel.getColumn(vColIndex);
         int width = 0;
 
-        JViewport viewport = ((JScrollPane) getParent()).getViewport();
+        JViewport viewport = (JViewport) getParent();
         Rectangle viewRect = viewport.getViewRect();
         int nFirst = this.rowAtPoint(new Point(0, viewRect.y));
         int nLast = this.rowAtPoint(new Point(0, viewRect.height - 1));

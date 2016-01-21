@@ -82,7 +82,7 @@ public class IndicatorPanel extends JPanel {
         });
         addMouseWheelListener(new MouseWheelListener() {
             public void mouseWheelMoved(MouseWheelEvent e) {
-                m_LogFilterMain.m_logScrollVBar.dispatchEvent(e);
+                m_LogFilterMain.m_logScrollVPane.dispatchEvent(e);
             }
         });
     }
@@ -168,7 +168,7 @@ public class IndicatorPanel extends JPanel {
         int TOTAL_COUNT = m_arLogInfo.size();
 
         if (TOTAL_COUNT > 0) {
-            JViewport viewport = (JViewport) m_LogFilterMain.m_logScrollVBar.getViewport();
+            JViewport viewport = (JViewport) m_LogFilterMain.m_logScrollVPane.getViewport();
             Rectangle viewRect = viewport.getViewRect();
 
             int nItemHeight = m_LogFilterMain.getLogTable().getRowHeight();

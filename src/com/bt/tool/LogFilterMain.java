@@ -71,7 +71,7 @@ public class LogFilterMain extends JFrame implements INotiEvent {
     ConcurrentHashMap<Integer, Integer> m_hmErrorFiltered;
     ILogParser m_iLogParser;
     LogTable m_tbLogTable;
-    JScrollPane m_logScrollVBar;
+    JScrollPane m_logScrollVPane;
     LogFilterTableModel m_tmLogTableModel;
     boolean m_bUserFilter;
 
@@ -219,7 +219,7 @@ public class LogFilterMain extends JFrame implements INotiEvent {
 
     private SubLogTable m_tSublogTable;
     private LogFilterTableModel m_tSubLogTableModel;
-    private JScrollPane m_subLogScrollVBar;
+    private JScrollPane m_subLogScrollVPane;
     ArrayList<LogInfo> m_arSubLogInfoAll;
 
     public static void main(final String args[]) {
@@ -318,6 +318,9 @@ public class LogFilterMain extends JFrame implements INotiEvent {
         menubar.add(netMenu);
         mainFrame.setJMenuBar(menubar);
 
+        mainFrame.pack();
+        mainFrame.restoreSplitPane();
+
         if (args != null && args.length > 0) {
             EventQueue.invokeLater(new Runnable() {
                 public void run() {
@@ -325,6 +328,12 @@ public class LogFilterMain extends JFrame implements INotiEvent {
                 }
             });
         }
+    }
+
+    private void restoreSplitPane() {
+        mSplitPane.setResizeWeight(1.0);
+        mSplitPane.setOneTouchExpandable(true);
+        mSplitPane.setDividerLocation(mSplitPaneDividerLocation);
     }
 
     String makeFilename() {
@@ -389,11 +398,14 @@ public class LogFilterMain extends JFrame implements INotiEvent {
 
         KeyboardFocusManager.getCurrentKeyboardFocusManager()
                 .addKeyEventDispatcher(mKeyEventDispatcher);
-
-        pack();
     }
 
     private void loadUI() {
+
+        setMinimumSize(new Dimension(MIN_WIDTH, MIN_HEIGHT));
+        setExtendedState(m_nWindState);
+        setPreferredSize(new Dimension(m_nWinWidth, m_nWinHeight));
+
         loadTableColumnState();
 
         getLogTable().setFontSize(Integer.parseInt(m_tfFontSize
@@ -403,13 +415,6 @@ public class LogFilterMain extends JFrame implements INotiEvent {
 
         updateTable(-1, false);
 
-        mSplitPane.setResizeWeight(1.0);
-        mSplitPane.setOneTouchExpandable(true);
-        mSplitPane.setDividerLocation(mSplitPaneDividerLocation);
-
-        setMinimumSize(new Dimension(MIN_WIDTH, MIN_HEIGHT));
-        setExtendedState(m_nWindState);
-        setPreferredSize(new Dimension(m_nWinWidth, m_nWinHeight));
     }
 
     final String INI_FILE = CONFIG_BASE_DIR + File.separator + "LogFilter.ini";
@@ -791,7 +796,7 @@ public class LogFilterMain extends JFrame implements INotiEvent {
         m_chkClmTag.addItemListener(m_itemListener);
         m_chkClmMessage.addItemListener(m_itemListener);
 
-        m_logScrollVBar.getViewport().addChangeListener(new ChangeListener() {
+        m_logScrollVPane.getViewport().addChangeListener(new ChangeListener() {
             public void stateChanged(ChangeEvent e) {
                 // m_ipIndicator.m_bDrawFull = false;
                 if (getExtendedState() != JFrame.MAXIMIZED_BOTH) {
@@ -1363,15 +1368,15 @@ public class LogFilterMain extends JFrame implements INotiEvent {
         m_tbLogTable = new LogTable(m_tmLogTableModel, this);
         m_iLogParser = new LogCatParser();
         m_tbLogTable.setLogParser(m_iLogParser);
-        m_logScrollVBar = new JScrollPane(m_tbLogTable);
+        m_logScrollVPane = new JScrollPane(m_tbLogTable);
 
         m_tSubLogTableModel = new LogFilterTableModel();
         m_tSubLogTableModel.setData(m_arSubLogInfoAll);
         m_tSublogTable = new SubLogTable(m_tSubLogTableModel, this);
 
-        m_subLogScrollVBar = new JScrollPane(m_tSublogTable);
+        m_subLogScrollVPane = new JScrollPane(m_tSublogTable);
 
-        mSplitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT, m_logScrollVBar, m_subLogScrollVBar);
+        mSplitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT, m_logScrollVPane, m_subLogScrollVPane);
         return mSplitPane;
     }
 
@@ -2270,7 +2275,7 @@ public class LogFilterMain extends JFrame implements INotiEvent {
     void updateTable(int nRow, boolean bMove) {
         // System.out.println("updateTable nRow:" + nRow + " | " + bMove);
         m_tmLogTableModel.fireTableDataChanged();
-        m_logScrollVBar.validate();
+        m_logScrollVPane.validate();
         // if(nRow >= 0)
         // m_tbLogTable.changeSelection(nRow, 0, false, false);
         getLogTable().invalidate();
@@ -2284,7 +2289,7 @@ public class LogFilterMain extends JFrame implements INotiEvent {
     void updateSubTable(int nRow, boolean bMove) {
 //        System.out.println("updateSubTable nRow:" + nRow + " | " + bMove);
         m_tSubLogTableModel.fireTableDataChanged();
-        m_subLogScrollVBar.validate();
+        m_subLogScrollVPane.validate();
         getSubTable().invalidate();
         getSubTable().repaint();
         if (nRow >= 0)
@@ -2767,9 +2772,9 @@ public class LogFilterMain extends JFrame implements INotiEvent {
         @Override
         public void adjustmentValueChanged(AdjustmentEvent e) {
             JScrollBar scrollBar = (JScrollBar) e.getSource();
-            if (scrollBar == m_logScrollVBar.getHorizontalScrollBar()) {
+            if (scrollBar == m_logScrollVPane.getHorizontalScrollBar()) {
                 T.d("HorizontalScrollBar: " + scrollBar.getValue());
-            } else if (scrollBar == m_logScrollVBar.getVerticalScrollBar()) {
+            } else if (scrollBar == m_logScrollVPane.getVerticalScrollBar()) {
                 mDiffService.writeDiffCommand(
                         DiffService.DiffServiceCmdType.SYNC_SCROLL_V,
                         String.valueOf(scrollBar.getValue() - mLastVBarValue)
@@ -2782,11 +2787,11 @@ public class LogFilterMain extends JFrame implements INotiEvent {
     public void enableSyncScroll(boolean enable) {
         mSyncScrollEnable = enable;
         if (mSyncScrollEnable) {
-//            m_logScrollVBar.getHorizontalScrollBar().addAdjustmentListener(mScrollListener);
-            m_logScrollVBar.getVerticalScrollBar().addAdjustmentListener(mScrollListener);
+//            m_logScrollVPane.getHorizontalScrollBar().addAdjustmentListener(mScrollListener);
+            m_logScrollVPane.getVerticalScrollBar().addAdjustmentListener(mScrollListener);
         } else {
-//            m_logScrollVBar.getHorizontalScrollBar().removeAdjustmentListener(mScrollListener);
-            m_logScrollVBar.getVerticalScrollBar().removeAdjustmentListener(mScrollListener);
+//            m_logScrollVPane.getHorizontalScrollBar().removeAdjustmentListener(mScrollListener);
+            m_logScrollVPane.getVerticalScrollBar().removeAdjustmentListener(mScrollListener);
         }
     }
 
@@ -2796,7 +2801,7 @@ public class LogFilterMain extends JFrame implements INotiEvent {
     }
 
     public void handleScrollVSyncEvent(String cmd) {
-        JScrollBar scrollBar = m_logScrollVBar.getVerticalScrollBar();
+        JScrollBar scrollBar = m_logScrollVPane.getVerticalScrollBar();
         int scrollChanged = Integer.valueOf(cmd);
         int newValue = scrollBar.getValue() + scrollChanged;
 
