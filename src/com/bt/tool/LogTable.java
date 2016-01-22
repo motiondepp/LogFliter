@@ -81,15 +81,10 @@ public class LogTable extends JTable implements FocusListener, ActionListener, I
     }
 
     public void changeSelection(LogInfo target, boolean toggle, boolean extend) {
-        Rectangle parent = getVisibleRect();
         for (int nIndex = 0; nIndex < getRowCount(); nIndex++) {
             LogInfo logInfo = ((LogFilterTableModel) getModel()).getRow(nIndex);
             if (logInfo.getLine() != null && target.getLine() == logInfo.getLine()) {
-                changeSelection(nIndex, 0, toggle, extend);
-                int nVisible = nIndex;
-                if (!isInnerRect(parent, getCellRect(nIndex, 0, true)))
-                    nVisible = nIndex + getVisibleRowCount() / 2;
-                showRow(nVisible);
+                showRowCenterIfNotInRect(nIndex, true);
                 return;
             }
         }
@@ -382,11 +377,7 @@ public class LogTable extends JTable implements FocusListener, ActionListener, I
         for (int nIndex = nSeletectRow + 1; nIndex < getRowCount(); nIndex++) {
             logInfo = ((LogFilterTableModel) getModel()).getRow(nIndex);
             if (logInfo.isMarked()) {
-                changeSelection(nIndex, 0, false, false);
-                int nVisible = nIndex;
-                if (!isInnerRect(parent, getCellRect(nIndex, 0, true)))
-                    nVisible = nIndex + getVisibleRowCount() / 2;
-                showRow(nVisible);
+                showRowCenterIfNotInRect(nIndex, true);
                 return;
             }
         }
@@ -394,11 +385,7 @@ public class LogTable extends JTable implements FocusListener, ActionListener, I
         for (int nIndex = 0; nIndex < nSeletectRow; nIndex++) {
             logInfo = ((LogFilterTableModel) getModel()).getRow(nIndex);
             if (logInfo.isMarked()) {
-                changeSelection(nIndex, 0, false, false);
-                int nVisible = nIndex;
-                if (!isInnerRect(parent, getCellRect(nIndex, 0, true)))
-                    nVisible = nIndex - getVisibleRowCount() / 2;
-                showRow(nVisible);
+                showRowCenterIfNotInRect(nIndex, true);
                 return;
             }
         }
@@ -416,11 +403,7 @@ public class LogTable extends JTable implements FocusListener, ActionListener, I
         for (int nIndex = nSeletectRow - 1; nIndex >= 0; nIndex--) {
             logInfo = ((LogFilterTableModel) getModel()).getRow(nIndex);
             if (logInfo.isMarked()) {
-                changeSelection(nIndex, 0, false, false);
-                int nVisible = nIndex;
-                if (!isInnerRect(parent, getCellRect(nIndex, 0, true)))
-                    nVisible = nIndex - getVisibleRowCount() / 2;
-                showRow(nVisible);
+                showRowCenterIfNotInRect(nIndex, true);
                 return;
             }
         }
@@ -428,11 +411,7 @@ public class LogTable extends JTable implements FocusListener, ActionListener, I
         for (int nIndex = getRowCount() - 1; nIndex > nSeletectRow; nIndex--) {
             logInfo = ((LogFilterTableModel) getModel()).getRow(nIndex);
             if (logInfo.isMarked()) {
-                changeSelection(nIndex, 0, false, false);
-                int nVisible = nIndex;
-                if (!isInnerRect(parent, getCellRect(nIndex, 0, true)))
-                    nVisible = nIndex + getVisibleRowCount() / 2;
-                showRow(nVisible);
+                showRowCenterIfNotInRect(nIndex, true);
                 return;
             }
         }
@@ -450,10 +429,6 @@ public class LogTable extends JTable implements FocusListener, ActionListener, I
             logInfo = ((LogFilterTableModel) getModel()).getRow(nIndex);
             if (logInfo.containString(m_strSearchHighlight)) {
                 changeSelection(nIndex, 0, false, false);
-                int nVisible = nIndex;
-                if (!isInnerRect(parent, getCellRect(nIndex, 0, true)))
-                    nVisible = nIndex + getVisibleRowCount() / 2;
-                showRow(nVisible);
                 return;
             }
         }
@@ -462,10 +437,6 @@ public class LogTable extends JTable implements FocusListener, ActionListener, I
             logInfo = ((LogFilterTableModel) getModel()).getRow(nIndex);
             if (logInfo.containString(m_strSearchHighlight)) {
                 changeSelection(nIndex, 0, false, false);
-                int nVisible = nIndex;
-                if (!isInnerRect(parent, getCellRect(nIndex, 0, true)))
-                    nVisible = nIndex - getVisibleRowCount() / 2;
-                showRow(nVisible);
                 return;
             }
         }
@@ -482,10 +453,6 @@ public class LogTable extends JTable implements FocusListener, ActionListener, I
             logInfo = ((LogFilterTableModel) getModel()).getRow(nIndex);
             if (logInfo.containString(m_strSearchHighlight)) {
                 changeSelection(nIndex, 0, false, false);
-                int nVisible = nIndex;
-                if (!isInnerRect(parent, getCellRect(nIndex, 0, true)))
-                    nVisible = nIndex - getVisibleRowCount() / 2;
-                showRow(nVisible);
                 return;
             }
         }
@@ -494,10 +461,6 @@ public class LogTable extends JTable implements FocusListener, ActionListener, I
             logInfo = ((LogFilterTableModel) getModel()).getRow(nIndex);
             if (logInfo.containString(m_strSearchHighlight)) {
                 changeSelection(nIndex, 0, false, false);
-                int nVisible = nIndex;
-                if (!isInnerRect(parent, getCellRect(nIndex, 0, true)))
-                    nVisible = nIndex + getVisibleRowCount() / 2;
-                showRow(nVisible);
                 return;
             }
         }
@@ -732,11 +695,7 @@ public class LogTable extends JTable implements FocusListener, ActionListener, I
         }
         if (minWeight != Integer.MAX_VALUE) {
             T.d("next minWeight = " + minWeight);
-            changeSelection(minIdx, 0, false, false);
-            int nVisible = minIdx;
-            if (!isInnerRect(parent, getCellRect(minIdx, 0, true)))
-                nVisible = minIdx + getVisibleRowCount() / 2;
-            showRow(nVisible);
+            showRowCenterIfNotInRect(minIdx, true);
             return;
         }
 
@@ -750,11 +709,7 @@ public class LogTable extends JTable implements FocusListener, ActionListener, I
         }
         if (minWeight != Integer.MAX_VALUE) {
             T.d("pre minWeight = " + minWeight);
-            changeSelection(minIdx, 0, false, false);
-            int nVisible = minIdx;
-            if (!isInnerRect(parent, getCellRect(minIdx, 0, true)))
-                nVisible = minIdx + getVisibleRowCount() / 2;
-            showRow(nVisible);
+            showRowCenterIfNotInRect(minIdx, true);
             return;
         }
     }
@@ -776,11 +731,7 @@ public class LogTable extends JTable implements FocusListener, ActionListener, I
         }
         if (minWeight != Integer.MAX_VALUE) {
             T.d("pre minWeight = " + minWeight);
-            changeSelection(minIdx, 0, false, false);
-            int nVisible = minIdx;
-            if (!isInnerRect(parent, getCellRect(minIdx, 0, true)))
-                nVisible = minIdx + getVisibleRowCount() / 2;
-            showRow(nVisible);
+            showRowCenterIfNotInRect(minIdx, true);
             return;
         }
 
@@ -794,11 +745,7 @@ public class LogTable extends JTable implements FocusListener, ActionListener, I
         }
         if (minWeight != Integer.MAX_VALUE) {
             T.d("next minWeight = " + minWeight);
-            changeSelection(minIdx, 0, false, false);
-            int nVisible = minIdx;
-            if (!isInnerRect(parent, getCellRect(minIdx, 0, true)))
-                nVisible = minIdx + getVisibleRowCount() / 2;
-            showRow(nVisible);
+            showRowCenterIfNotInRect(minIdx, true);
             return;
         }
     }
@@ -845,10 +792,10 @@ public class LogTable extends JTable implements FocusListener, ActionListener, I
         }
     }
 
-
     public void showRow(int row) {
         if (row < 0) row = 0;
-        if (row > getRowCount() - 1) row = getRowCount() - 1;
+        if (row > getRowCount() - 1)
+            row = getRowCount() - 1;
 
         Rectangle rList = getVisibleRect();
         Rectangle rCell = getCellRect(row, 0, true);
@@ -858,19 +805,22 @@ public class LogTable extends JTable implements FocusListener, ActionListener, I
         }
     }
 
-    public void showRow(int row, boolean bCenter) {
-        int nLastSelectedIndex = getSelectedRow();
-
-        changeSelection(row, 0, false, false);
-        int nVisible;
-        if (nLastSelectedIndex <= row || nLastSelectedIndex == -1)
-            nVisible = row + getVisibleRowCount() / 2;
-        else
-            nVisible = row - getVisibleRowCount() / 2;
-        if (nVisible < 0)
-            nVisible = 0;
-        else if (nVisible > getRowCount() - 1)
-            nVisible = getRowCount() - 1;
+    public void showRowCenterIfNotInRect(int row, boolean changeSelection) {
+        if (changeSelection) {
+            changeSelection(row, 0, false, false, false);
+        }
+        int nVisible = row;
+        if (0 <= nVisible && nVisible < getRowCount()) {
+            Rectangle parent = getVisibleRect();
+            Rectangle child = getCellRect(row, 0, true);
+            if (!isInnerRect(parent, child)) {
+                if (child.y + child.height > parent.y + parent.height) {
+                    nVisible = row + getVisibleRowCount() / 2;
+                } else if (child.y < parent.y) {
+                    nVisible = row - getVisibleRowCount() / 2;
+                }
+            }
+        }
         showRow(nVisible);
     }
 

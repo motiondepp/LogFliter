@@ -24,11 +24,13 @@ public class LogCatParser implements ILogParser {
         BTAEventProcessor btaEventProcessor = new BTAEventProcessor("BTA_event_conf.json");
         BluetoothAdapterStateProcessor bluetoothAdapterStateProcessor = new BluetoothAdapterStateProcessor();
         HFPCIEVEventProcessor hfpcievEventProcessor = new HFPCIEVEventProcessor();
+        HeadsetStateProcessor headsetStateProcessor = new HeadsetStateProcessor();
 
         mMessagePostProcessor = new BaseEventProcessor();
         mMessagePostProcessor.setNextProcessor(btaEventProcessor);
         btaEventProcessor.setNextProcessor(bluetoothAdapterStateProcessor);
         bluetoothAdapterStateProcessor.setNextProcessor(hfpcievEventProcessor);
+        hfpcievEventProcessor.setNextProcessor(headsetStateProcessor);
     }
 
     public Color getColor(LogInfo logInfo) {

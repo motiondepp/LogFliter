@@ -996,7 +996,7 @@ public class LogFilterMain extends JFrame implements INotiEvent {
                 if (e.getSource() == mDumpOfServiceBomboBox) {
                     DumpOfServiceInfo dumpOfServiceInfo = (DumpOfServiceInfo) mDumpOfServiceBomboBox.getSelectedItem();
                     T.d("mDumpOfServiceBomboBox actionPerformed: " + dumpOfServiceInfo.name);
-                    m_tbLogTable.showRow(dumpOfServiceInfo.row, true);
+                    m_tbLogTable.showRowCenterIfNotInRect(dumpOfServiceInfo.row, true);
                 }
             }
         });
@@ -1204,7 +1204,7 @@ public class LogFilterMain extends JFrame implements INotiEvent {
             public void caretUpdate(CaretEvent e) {
                 try {
                     int nIndex = Integer.parseInt(tfGoto.getText()) - 1;
-                    getLogTable().showRow(nIndex, false);
+                    getLogTable().showRowCenterIfNotInRect(nIndex, true);
                 } catch (Exception err) {
                 }
             }
@@ -2265,7 +2265,7 @@ public class LogFilterMain extends JFrame implements INotiEvent {
         getSubTable().invalidate();
         getSubTable().repaint();
         if (nRow >= 0)
-            getSubTable().changeSelection(nRow, 0, false, false, bMove);
+            getSubTable().showRowCenterIfNotInRect(nRow, true);
     }
 
     DocumentListener m_dlFilterListener = new DocumentListener() {

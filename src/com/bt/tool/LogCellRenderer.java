@@ -150,8 +150,7 @@ public class LogCellRenderer extends DefaultTableCellRenderer {
             strText = remakeFind(strText, mResolver.GetHighlight(), "#00FF00", true);
         }
 
-        if (nIndex == LogFilterTableModel.COMUMN_MESSAGE
-                || nIndex == LogFilterTableModel.COMUMN_TAG) {
+        if (nIndex == LogFilterTableModel.COMUMN_MESSAGE || nIndex == LogFilterTableModel.COMUMN_TAG) {
             String strFind = nIndex == LogFilterTableModel.COMUMN_MESSAGE ? mResolver.GetFilterFind() : mResolver.GetFilterShowTag();
             strText = remakeFind(strText, strFind, "#FF0000", false);
         }

@@ -55,7 +55,7 @@ public class IndicatorPanel extends JPanel {
                 if (m_arLogInfo != null) {
                     float fRate = (float) (e.getY() - m_rcBookmark.y) / (float) (m_rcBookmark.height);
                     int nIndex = (int) (m_arLogInfo.size() * fRate);
-                    m_LogFilterMain.getLogTable().showRow(nIndex, false);
+                    m_LogFilterMain.getLogTable().showRowCenterIfNotInRect(nIndex, false);
                 }
             }
 
@@ -76,7 +76,7 @@ public class IndicatorPanel extends JPanel {
                 if (m_arLogInfo != null) {
                     float fRate = (float) (e.getY() - m_rcBookmark.y) / (float) (m_rcBookmark.height);
                     int nIndex = (int) (m_arLogInfo.size() * fRate);
-                    m_LogFilterMain.getLogTable().showRow(nIndex, false);
+                    m_LogFilterMain.getLogTable().showRowCenterIfNotInRect(nIndex, false);
                 }
             }
         });

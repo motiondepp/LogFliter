@@ -41,18 +41,6 @@ public class SubLogTable extends JTable implements FocusListener, ActionListener
         setColumnWidth();
     }
 
-    public void changeSelection(int rowIndex, int columnIndex, boolean toggle, boolean extend) {
-        changeSelection(rowIndex, columnIndex, toggle, extend, true);
-    }
-
-    public void changeSelection(int rowIndex, int columnIndex, boolean toggle, boolean extend, boolean bMove) {
-        if (rowIndex < 0) rowIndex = 0;
-        if (rowIndex > getRowCount() - 1) rowIndex = getRowCount() - 1;
-        super.changeSelection(rowIndex, columnIndex, toggle, extend);
-        if (bMove)
-            showRow(rowIndex);
-    }
-
     private void init() {
         KeyStroke copy = KeyStroke.getKeyStroke(KeyEvent.VK_C, InputEvent.CTRL_MASK, false);
         registerKeyboardAction(this, "Copy", copy, JComponent.WHEN_FOCUSED);
@@ -360,9 +348,14 @@ public class SubLogTable extends JTable implements FocusListener, ActionListener
         }
     }
 
+    boolean isInnerRect(Rectangle parent, Rectangle child) {
+        return parent.y <= child.y && (parent.y + parent.height) >= (child.y + child.height);
+    }
+
     public void showRow(int row) {
         if (row < 0) row = 0;
-        if (row > getRowCount() - 1) row = getRowCount() - 1;
+        if (row > getRowCount() - 1)
+            row = getRowCount() - 1;
 
         Rectangle rList = getVisibleRect();
         Rectangle rCell = getCellRect(row, 0, true);
@@ -372,19 +365,22 @@ public class SubLogTable extends JTable implements FocusListener, ActionListener
         }
     }
 
-    public void showRow(int row, boolean bCenter) {
-        int nLastSelectedIndex = getSelectedRow();
-
-        changeSelection(row, 0, false, false);
+    public void showRowCenterIfNotInRect(int row, boolean changeSelection) {
+        if (changeSelection) {
+            changeSelection(row, 0, false, false);
+        }
         int nVisible = row;
-        if (nLastSelectedIndex <= row || nLastSelectedIndex == -1)
-            nVisible = row + getVisibleRowCount() / 2;
-        else
-            nVisible = row - getVisibleRowCount() / 2;
-        if (nVisible < 0)
-            nVisible = 0;
-        else if (nVisible > getRowCount() - 1)
-            nVisible = getRowCount() - 1;
+        if (0 <= nVisible && nVisible < getRowCount()) {
+            Rectangle parent = getVisibleRect();
+            Rectangle child = getCellRect(row, 0, true);
+            if (!isInnerRect(parent, child)) {
+                if (child.y + child.height > parent.y + parent.height) {
+                    nVisible = row + getVisibleRowCount() / 2;
+                } else if (child.y < parent.y) {
+                    nVisible = row - getVisibleRowCount() / 2;
+                }
+            }
+        }
         showRow(nVisible);
     }
 
