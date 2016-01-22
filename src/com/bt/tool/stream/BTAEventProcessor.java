@@ -90,6 +90,6 @@ public class BTAEventProcessor extends MessagePostProcessor {
 
     @Override
     public boolean shouldProcess(LogInfo info) {
-        return info != null && info.getTag().equals("bt-btif:");
+        return info != null && (info.getTag().equals("bt-btif:") || info.getTag().equals("bt_btif:"));
     }
 }
