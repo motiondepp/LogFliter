@@ -41,6 +41,10 @@ public abstract class MessagePostProcessor implements IPostProcessor<LogInfo> {
         this.mNextProcessor = mNextProcessor;
     }
 
+    public IPostProcessor getNextProcessor() {
+        return this.mNextProcessor;
+    }
+
     public boolean shouldProcess(LogInfo info) {
         return true;
     }

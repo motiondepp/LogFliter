@@ -117,12 +117,15 @@ public class HeadsetStateProcessor extends MessagePostProcessor {
         } else if (MESSAGE_PATTERN.matcher(result).find()) {
             int idx = result.indexOf(": ");
             if (idx != -1) {
-                String msgValue = result.substring(idx + 2);
-                int msgIdx = Integer.valueOf(msgValue);
-                if (MSG_MAP.containsKey(msgIdx)) {
-                    StringBuffer sb = new StringBuffer();
-                    sb.insert(0, " ( ").append(MSG_MAP.get(msgIdx)).append(" )");
-                    result += sb.toString();
+                Matcher matcher = PATTERN.matcher(result);
+                if (matcher.find()) {
+                    String msgValue = matcher.group(1);
+                    int msgIdx = Integer.valueOf(msgValue);
+                    if (MSG_MAP.containsKey(msgIdx)) {
+                        StringBuffer sb = new StringBuffer();
+                        sb.insert(0, " ( ").append(MSG_MAP.get(msgIdx)).append(" )");
+                        result += sb.toString();
+                    }
                 }
             }
         }

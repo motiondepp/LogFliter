@@ -1782,6 +1782,7 @@ public class LogFilterMain extends JFrame implements INotiEvent {
                         }
                     }
                 } catch (Exception e) {
+                    e.printStackTrace();
                     T.e(e);
                 }
                 try {
