@@ -41,11 +41,13 @@ public abstract class MessagePostProcessor implements IPostProcessor<LogInfo> {
         this.mNextProcessor = mNextProcessor;
     }
 
+    public boolean shouldProcess(LogInfo info) {
+        return true;
+    }
+
     public boolean shouldProcessNext(LogInfo info) {
         return true;
     }
 
     abstract protected LogInfo process(LogInfo srcInfo);
-
-    abstract public boolean shouldProcess(LogInfo info);
 }

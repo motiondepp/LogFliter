@@ -3,18 +3,14 @@ package com.bt.tool;
 import com.bt.tool.diff.DiffService;
 
 import javax.swing.*;
-import javax.swing.event.ChangeEvent;
-import javax.swing.event.ListSelectionEvent;
-import javax.swing.event.TableColumnModelEvent;
-import javax.swing.event.TableColumnModelListener;
+import javax.swing.event.*;
 import javax.swing.table.*;
 import java.awt.*;
 import java.awt.event.*;
 import java.text.ParseException;
 import java.util.BitSet;
-import java.util.StringTokenizer;
 
-public class LogTable extends JTable implements FocusListener, ActionListener {
+public class LogTable extends JTable implements FocusListener, ActionListener, ILogRenderResolver {
     private static final long serialVersionUID = 1L;
 
     LogFilterMain m_LogFilterMain;
@@ -37,6 +33,10 @@ public class LogTable extends JTable implements FocusListener, ActionListener {
     private LogInfoHistory curHistoryInfo = new LogInfoHistory();
     private long mFilterToTime = -1;
     private long mFilterFromTime = -1;
+    public int mMaxShownCol = 0;
+    public int mMinShownCol = LogFilterTableModel.COMUMN_MAX - 1;
+    private int mMaxSelectedRow;
+    private int mMinSelectedRow;
 
     public LogTable(LogFilterTableModel tablemodel, LogFilterMain filterMain) {
         super(tablemodel);
@@ -105,32 +105,27 @@ public class LogTable extends JTable implements FocusListener, ActionListener {
         m_fFontSize = 12;
         setOpaque(false);
         setAutoscrolls(false);
-//        setRequestFocusEnabled(false);
-
-//        setGridColor(TABLE_GRID_COLOR);
         setIntercellSpacing(new Dimension(0, 0));
-        // turn off grid painting as we'll handle this manually in order to paint
-        // grid lines over the entire viewport.
         setShowGrid(false);
 
         for (int iIndex = 0; iIndex < getColumnCount(); iIndex++) {
-            getColumnModel().getColumn(iIndex).setCellRenderer(new LogCellRenderer());
+            getColumnModel().getColumn(iIndex).setCellRenderer(new LogCellRenderer(this, this));
         }
 
+        initListener();
+    }
+
+    private void initListener() {
         addMouseListener(new MouseAdapter() {
 
             public void mouseReleased(MouseEvent e) {
                 Point p = e.getPoint();
                 int row = rowAtPoint(p);
                 if (SwingUtilities.isLeftMouseButton(e)) {
-//                    if (e.getClickCount() == 1){
-//                        m_latestSelectLogInfo = ((LogFilterTableModel)getModel()).getRow(row);
-////                        T.d("cur sel: " + m_latestSelectLogInfo.m_intLine);
-//                     }
                     if (e.getClickCount() == 2) {
                         LogInfo logInfo = ((LogFilterTableModel) getModel()).getRow(row);
                         logInfo.setMarked(!logInfo.isMarked());
-                        m_LogFilterMain.bookmarkItem(row, logInfo.getLine() - 1, logInfo.isMarked());
+                        m_LogFilterMain.markLogInfo(row, logInfo.getLine() - 1, logInfo.isMarked());
                     } else if (m_bAltPressed) {
                         int colum = columnAtPoint(p);
                         LogInfo logInfo = ((LogFilterTableModel) getModel()).getRow(row);
@@ -183,6 +178,14 @@ public class LogTable extends JTable implements FocusListener, ActionListener {
                 }
             }
         });
+        getSelectionModel().addListSelectionListener(new ListSelectionListener() {
+            @Override
+            public void valueChanged(ListSelectionEvent e) {
+                ListSelectionModel lsm = (ListSelectionModel) e.getSource();
+                mMaxSelectedRow = lsm.getMaxSelectionIndex();
+                mMinSelectedRow = lsm.getMinSelectionIndex();
+            }
+        });
         getTableHeader().addMouseListener(new ColumnHeaderListener());
         getColumnModel().addColumnModelListener(mTableColumnWidthListener);
     }
@@ -203,7 +206,7 @@ public class LogTable extends JTable implements FocusListener, ActionListener {
                 for (int selectedRow : selectedRows) {
                     LogInfo logInfo = ((LogFilterTableModel) getModel()).getRow(selectedRow);
                     logInfo.setMarked(!logInfo.isMarked());
-                    m_LogFilterMain.bookmarkItem(selectedRow, logInfo.getLine() - 1, logInfo.isMarked());
+                    m_LogFilterMain.markLogInfo(selectedRow, logInfo.getLine() - 1, logInfo.isMarked());
                 }
             }
         });
@@ -270,39 +273,39 @@ public class LogTable extends JTable implements FocusListener, ActionListener {
         return parent.y <= child.y && (parent.y + parent.height) >= (child.y + child.height);
     }
 
-    String GetFilterFind() {
+    public String GetFilterFind() {
         return m_strFilterFind;
     }
 
-    String GetFilterRemove() {
+    public String GetFilterRemove() {
         return m_strFilterRemove;
     }
 
-    String GetFilterShowPid() {
+    public String GetFilterShowPid() {
         return m_strPidShow;
     }
 
-    String GetFilterShowTid() {
+    public String GetFilterShowTid() {
         return m_strTidShow;
     }
 
-    String GetFilterShowTag() {
+    public String GetFilterShowTag() {
         return m_strTagShow;
     }
 
-    String GetHighlight() {
+    public String GetHighlight() {
         return m_strHighlight;
     }
 
-    String GetSearchHighlight() {
+    public String GetSearchHighlight() {
         return m_strSearchHighlight;
     }
 
-    String GetFilterRemoveTag() {
+    public String GetFilterRemoveTag() {
         return m_strTagRemove;
     }
 
-    String GetFilterBookmarkTag() {
+    public String GetFilterBookmarkTag() {
         return m_strTagBookmark;
     }
 
@@ -313,28 +316,7 @@ public class LogTable extends JTable implements FocusListener, ActionListener {
             return;
         }
 
-        String[] tParts = fromTime.split("[:\\.]");
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < 3; i++) {
-            String part = "0";
-            if (i < tParts.length) {
-                part = tParts[i];
-            }
-            if (part.length() > 2)
-                break;
-            sb.append(String.format("%-2s", part).replace(' ', '0'));
-            sb.append(":");
-        }
-        fromTime = sb.deleteCharAt(sb.length() - 1).toString();
-
-        int idx = fromTime.indexOf(".");
-        if (idx == -1) {
-            fromTime += ".000";
-        } else if (fromTime.length() - idx < 4) {
-            String sss = fromTime.substring(idx + 1);
-            fromTime = fromTime.substring(0, idx + 1) + String.format("%-3s", sss).replace(' ', '0');
-        }
-
+        fromTime = getVaildTimeString(fromTime);
         try {
             mFilterFromTime = LogCatParser.TIMESTAMP_FORMAT.parse(fromTime).getTime();
         } catch (ParseException e) {
@@ -348,32 +330,40 @@ public class LogTable extends JTable implements FocusListener, ActionListener {
             return;
         }
 
-        String[] tParts = toTime.split("[:\\.]");
+        toTime = getVaildTimeString(toTime);
+        try {
+            mFilterToTime = LogCatParser.TIMESTAMP_FORMAT.parse(toTime).getTime();
+        } catch (ParseException e) {
+            mFilterToTime = -1;
+        }
+    }
+
+    private String getVaildTimeString(String srcTime) {
+        String[] tParts = srcTime.split("[:\\.]");
+        if (tParts.length > 4)
+            return null;
+
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < 3; i++) {
             String part = "0";
             if (i < tParts.length) {
                 part = tParts[i];
             }
-            if (part.length() > 2)
-                break;
             sb.append(String.format("%-2s", part).replace(' ', '0'));
             sb.append(":");
         }
-        toTime = sb.deleteCharAt(sb.length() - 1).toString();
+        sb.deleteCharAt(sb.length() - 1);
 
-        int idx = toTime.indexOf(".");
-        if (idx == -1) {
-            toTime += ".000";
-        } else if (toTime.length() - idx < 4) {
-            String sss = toTime.substring(idx + 1);
-            toTime = toTime.substring(0, idx + 1) + String.format("%-3s", sss).replace(' ', '0');
+        if (tParts.length == 4) {
+            sb.append(".").append(tParts[3]);
         }
-        try {
-            mFilterToTime = LogCatParser.TIMESTAMP_FORMAT.parse(toTime).getTime();
-        } catch (ParseException e) {
-            mFilterToTime = -1;
+
+        if (tParts.length == 3) {
+            sb.append(".000");
+        } else if (tParts[3].length() < 3) {
+            srcTime = sb.append(String.format("%-3s", tParts[3]).replace(' ', '0')).toString();
         }
+        return srcTime;
     }
 
     public long GetFilterFromTime() {
@@ -575,6 +565,21 @@ public class LogTable extends JTable implements FocusListener, ActionListener {
         LogFilterTableModel.ColWidth[vColIndex] = width;
     }
 
+    @Override
+    public boolean isColumnShown(int idx) {
+        return m_arbShow[idx];
+    }
+
+    @Override
+    public int getMinShownColumn() {
+        return mMinShownCol;
+    }
+
+    @Override
+    public int getMaxShownColumn() {
+        return mMaxShownCol;
+    }
+
     public float getFontSize() {
         return m_fFontSize;
     }
@@ -586,13 +591,34 @@ public class LogTable extends JTable implements FocusListener, ActionListener {
     public void showColumn(int nColumn, boolean bShow) {
         m_arbShow[nColumn] = bShow;
         if (bShow) {
+            if (mMaxShownCol <= nColumn)
+                mMaxShownCol = nColumn;
+            if (mMinShownCol >= nColumn)
+                mMinShownCol = nColumn;
             getColumnModel().getColumn(nColumn).setResizable(true);
             getColumnModel().getColumn(nColumn).setMaxWidth(LogFilterTableModel.ColWidth[nColumn] * 1000);
             getColumnModel().getColumn(nColumn).setMinWidth(1);
             getColumnModel().getColumn(nColumn).setWidth(LogFilterTableModel.ColWidth[nColumn]);
             getColumnModel().getColumn(nColumn).setPreferredWidth(LogFilterTableModel.ColWidth[nColumn]);
-        } else
+        } else {
+            if (nColumn >= mMaxShownCol) {
+                for (int i = m_arbShow.length - 1; i >= 0; i--) {
+                    if (m_arbShow[i]) {
+                        mMaxShownCol = i;
+                        break;
+                    }
+                }
+            }
+            if (nColumn <= mMinShownCol) {
+                for (int i = 0; i < m_arbShow.length; i++) {
+                    if (m_arbShow[i]) {
+                        mMinShownCol = i;
+                        break;
+                    }
+                }
+            }
             hideColumn(nColumn);
+        }
     }
 
     public void setColumnWidth() {
@@ -819,136 +845,6 @@ public class LogTable extends JTable implements FocusListener, ActionListener {
         }
     }
 
-    public class LogCellRenderer extends DefaultTableCellRenderer {
-        private static final long serialVersionUID = 1L;
-        boolean m_bChanged;
-
-        public Component getTableCellRendererComponent(JTable table,
-                                                       Object value,
-                                                       boolean isSelected,
-                                                       boolean hasFocus,
-                                                       int row,
-                                                       int column) {
-            LogInfo logInfo = ((LogFilterTableModel) getModel()).getRow(row);
-            if (value != null) {
-                value = remakeData(column, value.toString());
-            }
-            Component c = super.getTableCellRendererComponent(table,
-                    value,
-                    isSelected,
-                    hasFocus,
-                    row,
-                    column);
-            c.setFont(getFont().deriveFont(m_fFontSize));
-            c.setForeground(logInfo.getTextColor());
-            if (isSelected) {
-                if (logInfo.isMarked())
-                    c.setBackground(new Color(LogColor.COLOR_BOOKMARK2));
-            } else if (logInfo.isMarked())
-                c.setBackground(new Color(LogColor.COLOR_BOOKMARK));
-            else
-                c.setBackground(Color.WHITE);
-
-            return c;
-        }
-
-        String remakeData(int nIndex, String strText) {
-//            if(nIndex != LogFilterTableModel.COMUMN_MESSAGE
-//                    && nIndex != LogFilterTableModel.COMUMN_TAG)
-//                return strText;
-
-            m_bChanged = false;
-
-            strText = strText.replace(" ", "\u00A0");
-            if (LogColor.COLOR_HIGHLIGHT != null && LogColor.COLOR_HIGHLIGHT.length > 0) {
-                strText = remakeFind(strText, GetHighlight(), LogColor.COLOR_HIGHLIGHT, true);
-            } else {
-                strText = remakeFind(strText, GetHighlight(), "#00FF00", true);
-            }
-
-            if (nIndex == LogFilterTableModel.COMUMN_MESSAGE
-                    || nIndex == LogFilterTableModel.COMUMN_TAG) {
-                String strFind = nIndex == LogFilterTableModel.COMUMN_MESSAGE ? GetFilterFind() : GetFilterShowTag();
-                strText = remakeFind(strText, strFind, "#FF0000", false);
-            }
-
-            strText = remakeFind(strText, GetSearchHighlight(), "#FFFF00", true);
-            if (m_bChanged)
-                strText = "<html><nobr>" + strText + "</nobr></html>";
-
-            return strText.replace("\t", "    ");
-        }
-
-        String remakeFind(String strText, String strFind, String[] arColor, boolean bUseSpan) {
-            if (strFind == null || strFind.length() <= 0) return strText;
-
-            strFind = strFind.replace(" ", "\u00A0");
-            StringTokenizer stk = new StringTokenizer(strFind, "|");
-            String newText;
-            String strToken;
-            int nIndex = 0;
-
-            while (stk.hasMoreElements()) {
-                if (nIndex >= arColor.length)
-                    nIndex = 0;
-                strToken = stk.nextToken();
-
-                int idx = strText.toLowerCase().indexOf(strToken.toLowerCase());
-                if (idx != -1) {
-                    String prefix = strText.substring(0, idx);
-                    String suffix = strText.substring(idx + strToken.length());
-                    String target = strText.substring(idx, idx + strToken.length());
-
-                    if (bUseSpan)
-                        newText = "<span style=\"background-color:#" + arColor[nIndex] + "\"><b>";
-                    else
-                        newText = "<font color=#" + arColor[nIndex] + "><b>";
-                    newText += target;
-                    if (bUseSpan)
-                        newText += "</b></span>";
-                    else
-                        newText += "</b></font>";
-                    strText = prefix + newText + suffix;
-                    m_bChanged = true;
-                    nIndex++;
-                }
-            }
-            return strText;
-        }
-
-        String remakeFind(String strText, String strFind, String strColor, boolean bUseSpan) {
-            if (strFind == null || strFind.length() <= 0) return strText;
-
-            strFind = strFind.replace(" ", "\u00A0");
-            StringTokenizer stk = new StringTokenizer(strFind, "|");
-            String newText;
-            String strToken;
-
-            while (stk.hasMoreElements()) {
-                strToken = stk.nextToken();
-
-                int idx = strText.toLowerCase().indexOf(strToken.toLowerCase());
-                if (idx != -1) {
-                    String prefix = strText.substring(0, idx);
-                    String suffix = strText.substring(idx + strToken.length());
-                    String target = strText.substring(idx, idx + strToken.length());
-
-                    if (bUseSpan)
-                        newText = "<span style=\"background-color:" + strColor + "\"><b>";
-                    else
-                        newText = "<font color=" + strColor + "><b>";
-                    newText += target;
-                    if (bUseSpan)
-                        newText += "</b></span>";
-                    else
-                        newText += "</b></font>";
-                    strText = prefix + newText + suffix;
-                    m_bChanged = true;
-                }
-            }
-            return strText;
-        }
-    }
 
     public void showRow(int row) {
         if (row < 0) row = 0;

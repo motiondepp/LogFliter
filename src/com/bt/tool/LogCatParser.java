@@ -1,8 +1,6 @@
 package com.bt.tool;
 
-import com.bt.tool.stream.BTAEventProcessor;
-import com.bt.tool.stream.BluetoothAdapterStateProcessor;
-import com.bt.tool.stream.MessagePostProcessor;
+import com.bt.tool.stream.*;
 
 import java.awt.*;
 import java.text.DateFormat;
@@ -23,8 +21,14 @@ public class LogCatParser implements ILogParser {
     public MessagePostProcessor mMessagePostProcessor;
 
     public LogCatParser() {
-        mMessagePostProcessor = new BTAEventProcessor("BTA_event_conf.json");
-        mMessagePostProcessor.setNextProcessor(new BluetoothAdapterStateProcessor());
+        BTAEventProcessor btaEventProcessor = new BTAEventProcessor("BTA_event_conf.json");
+        BluetoothAdapterStateProcessor bluetoothAdapterStateProcessor = new BluetoothAdapterStateProcessor();
+        HFPCIEVEventProcessor hfpcievEventProcessor = new HFPCIEVEventProcessor();
+
+        mMessagePostProcessor = new BaseEventProcessor();
+        mMessagePostProcessor.setNextProcessor(btaEventProcessor);
+        btaEventProcessor.setNextProcessor(bluetoothAdapterStateProcessor);
+        bluetoothAdapterStateProcessor.setNextProcessor(hfpcievEventProcessor);
     }
 
     public Color getColor(LogInfo logInfo) {

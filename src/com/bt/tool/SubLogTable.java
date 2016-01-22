@@ -5,12 +5,12 @@ import javax.swing.table.*;
 import java.awt.*;
 import java.awt.event.*;
 import java.util.BitSet;
-import java.util.StringTokenizer;
 
-public class SubLogTable extends JTable implements FocusListener, ActionListener {
+public class SubLogTable extends JTable implements FocusListener, ActionListener, ILogRenderResolver {
     private static final long serialVersionUID = 1L;
 
     LogFilterMain m_LogFilterMain;
+    String m_strFilterFind;
     String m_strSearchHighlight;
     String m_strHighlight;
     String m_strPidShow;
@@ -20,12 +20,16 @@ public class SubLogTable extends JTable implements FocusListener, ActionListener
     String m_strTagBookmark;
     float m_fFontSize;
     boolean m_bAltPressed;
+
     boolean[] m_arbShow;
+    public int mMaxShownCol = 0;
+    public int mMinShownCol = LogFilterTableModel.COMUMN_MAX;
 
     public SubLogTable(LogFilterTableModel tablemodel, LogFilterMain filterMain) {
         super(tablemodel);
         m_LogFilterMain = filterMain;
         m_strSearchHighlight = "";
+        m_strFilterFind = "";
         m_strHighlight = "";
         m_strPidShow = "";
         m_strTidShow = "";
@@ -63,7 +67,7 @@ public class SubLogTable extends JTable implements FocusListener, ActionListener
         setShowGrid(false);
 
         for (int iIndex = 0; iIndex < getColumnCount(); iIndex++) {
-            getColumnModel().getColumn(iIndex).setCellRenderer(new LogCellRenderer());
+            getColumnModel().getColumn(iIndex).setCellRenderer(new LogCellRenderer(this, this));
         }
 
         addMouseListener(new MouseAdapter() {
@@ -121,11 +125,15 @@ public class SubLogTable extends JTable implements FocusListener, ActionListener
             @Override
             public void actionPerformed(ActionEvent e) {
                 int[] selectedRows = getSelectedRows();
-                for (int selectedRow : selectedRows) {
-                    LogInfo logInfo = ((LogFilterTableModel) getModel()).getRow(selectedRow);
-                    logInfo.setMarked(!logInfo.isMarked());
-                    m_LogFilterMain.bookmarkItem(selectedRow, logInfo.getLine() - 1, logInfo.isMarked());
+                LogInfo[] selectedInfo = new LogInfo[selectedRows.length];
+                for (int i = 0; i < selectedRows.length; i++) {
+                    selectedInfo[i] = ((LogFilterTableModel) getModel()).getRow(selectedRows[i]);
                 }
+                for (int i = 0; i < selectedRows.length; i++) {
+                    LogInfo info = selectedInfo[i];
+                    m_LogFilterMain.markLogInfo(selectedRows[i], info.getLine() - 1, !info.isMarked());
+                }
+
             }
         });
         menuPopup.add(markMenuItem);
@@ -164,23 +172,27 @@ public class SubLogTable extends JTable implements FocusListener, ActionListener
         return m_strTidShow;
     }
 
-    String GetFilterShowTag() {
+    public String GetFilterShowTag() {
         return m_strTagShow;
     }
 
-    String GetHighlight() {
+    public String GetFilterFind() {
+        return m_strFilterFind;
+    }
+
+    public String GetHighlight() {
         return m_strHighlight;
     }
 
-    String GetSearchHighlight() {
+    public String GetSearchHighlight() {
         return m_strSearchHighlight;
     }
 
-    String GetFilterRemoveTag() {
+    public String GetFilterRemoveTag() {
         return m_strTagRemove;
     }
 
-    String GetFilterBookmarkTag() {
+    public String GetFilterBookmarkTag() {
         return m_strTagBookmark;
     }
 
@@ -188,6 +200,9 @@ public class SubLogTable extends JTable implements FocusListener, ActionListener
         return getVisibleRect().height / getRowHeight();
     }
 
+    void setFilterFind(String strFind) {
+        m_strFilterFind = strFind;
+    }
 
     public void hideColumn(int nColumn) {
         getColumnModel().getColumn(nColumn).setWidth(0);
@@ -245,24 +260,56 @@ public class SubLogTable extends JTable implements FocusListener, ActionListener
         LogFilterTableModel.ColWidth[vColIndex] = width;
     }
 
-    public float getFontSize() {
-        return m_fFontSize;
+    @Override
+    public boolean isColumnShown(int idx) {
+        return m_arbShow[idx];
     }
 
-    public int getColumnWidth(int nColumn) {
-        return getColumnModel().getColumn(nColumn).getWidth();
+    @Override
+    public int getMinShownColumn() {
+        return mMinShownCol;
+    }
+
+    @Override
+    public int getMaxShownColumn() {
+        return mMaxShownCol;
+    }
+
+    public float getFontSize() {
+        return m_fFontSize;
     }
 
     public void showColumn(int nColumn, boolean bShow) {
         m_arbShow[nColumn] = bShow;
         if (bShow) {
+            if (mMaxShownCol <= nColumn)
+                mMaxShownCol = nColumn;
+            if (mMinShownCol >= nColumn)
+                mMinShownCol = nColumn;
             getColumnModel().getColumn(nColumn).setResizable(true);
             getColumnModel().getColumn(nColumn).setMaxWidth(LogFilterTableModel.ColWidth[nColumn] * 1000);
             getColumnModel().getColumn(nColumn).setMinWidth(1);
             getColumnModel().getColumn(nColumn).setWidth(LogFilterTableModel.ColWidth[nColumn]);
             getColumnModel().getColumn(nColumn).setPreferredWidth(LogFilterTableModel.ColWidth[nColumn]);
-        } else
+        } else {
+            if (nColumn >= mMaxShownCol) {
+                for (int i = m_arbShow.length - 1; i >= 0; i--) {
+                    if (m_arbShow[i]) {
+                        mMaxShownCol = i;
+                        break;
+                    }
+                }
+            }
+            if (nColumn <= mMinShownCol) {
+                for (int i = 0; i < m_arbShow.length; i++) {
+                    if (m_arbShow[i]) {
+                        mMinShownCol = i;
+                        break;
+                    }
+                }
+            }
             hideColumn(nColumn);
+        }
     }
 
     public void setColumnWidth() {
@@ -313,130 +360,6 @@ public class SubLogTable extends JTable implements FocusListener, ActionListener
         }
     }
 
-    public class LogCellRenderer extends DefaultTableCellRenderer {
-        private static final long serialVersionUID = 1L;
-        boolean m_bChanged;
-
-        public Component getTableCellRendererComponent(JTable table,
-                                                       Object value,
-                                                       boolean isSelected,
-                                                       boolean hasFocus,
-                                                       int row,
-                                                       int column) {
-            LogInfo logInfo = ((LogFilterTableModel) getModel()).getRow(row);
-            if (value != null) {
-                value = remakeData(column, value.toString());
-            }
-            Component c = super.getTableCellRendererComponent(table,
-                    value,
-                    isSelected,
-                    hasFocus,
-                    row,
-                    column);
-            c.setFont(getFont().deriveFont(m_fFontSize));
-            c.setForeground(logInfo.getTextColor());
-            if (isSelected) {
-                if (logInfo.isMarked())
-                    c.setBackground(new Color(LogColor.COLOR_BOOKMARK2));
-            } else
-                c.setBackground(Color.WHITE);
-
-            return c;
-        }
-
-        String remakeData(int nIndex, String strText) {
-
-            m_bChanged = false;
-
-            strText = strText.replace(" ", "\u00A0");
-            if (LogColor.COLOR_HIGHLIGHT != null && LogColor.COLOR_HIGHLIGHT.length > 0) {
-                strText = remakeFind(strText, GetHighlight(), LogColor.COLOR_HIGHLIGHT, true);
-            } else {
-                strText = remakeFind(strText, GetHighlight(), "#00FF00", true);
-            }
-
-            if (nIndex == LogFilterTableModel.COMUMN_TAG) {
-                strText = remakeFind(strText, GetFilterShowTag(), "#FF0000", false);
-            }
-
-            strText = remakeFind(strText, GetSearchHighlight(), "#FFFF00", true);
-            if (m_bChanged)
-                strText = "<html><nobr>" + strText + "</nobr></html>";
-
-            return strText.replace("\t", "    ");
-        }
-
-        String remakeFind(String strText, String strFind, String[] arColor, boolean bUseSpan) {
-            if (strFind == null || strFind.length() <= 0) return strText;
-
-            strFind = strFind.replace(" ", "\u00A0");
-            StringTokenizer stk = new StringTokenizer(strFind, "|");
-            String newText;
-            String strToken;
-            int nIndex = 0;
-
-            while (stk.hasMoreElements()) {
-                if (nIndex >= arColor.length)
-                    nIndex = 0;
-                strToken = stk.nextToken();
-
-                int idx = strText.toLowerCase().indexOf(strToken.toLowerCase());
-                if (idx != -1) {
-                    String prefix = strText.substring(0, idx);
-                    String suffix = strText.substring(idx + strToken.length());
-                    String target = strText.substring(idx, idx + strToken.length());
-
-                    if (bUseSpan)
-                        newText = "<span style=\"background-color:#" + arColor[nIndex] + "\"><b>";
-                    else
-                        newText = "<font color=#" + arColor[nIndex] + "><b>";
-                    newText += target;
-                    if (bUseSpan)
-                        newText += "</b></span>";
-                    else
-                        newText += "</b></font>";
-                    strText = prefix + newText + suffix;
-                    m_bChanged = true;
-                    nIndex++;
-                }
-            }
-            return strText;
-        }
-
-        String remakeFind(String strText, String strFind, String strColor, boolean bUseSpan) {
-            if (strFind == null || strFind.length() <= 0) return strText;
-
-            strFind = strFind.replace(" ", "\u00A0");
-            StringTokenizer stk = new StringTokenizer(strFind, "|");
-            String newText;
-            String strToken;
-
-            while (stk.hasMoreElements()) {
-                strToken = stk.nextToken();
-
-                int idx = strText.toLowerCase().indexOf(strToken.toLowerCase());
-                if (idx != -1) {
-                    String prefix = strText.substring(0, idx);
-                    String suffix = strText.substring(idx + strToken.length());
-                    String target = strText.substring(idx, idx + strToken.length());
-
-                    if (bUseSpan)
-                        newText = "<span style=\"background-color:" + strColor + "\"><b>";
-                    else
-                        newText = "<font color=" + strColor + "><b>";
-                    newText += target;
-                    if (bUseSpan)
-                        newText += "</b></span>";
-                    else
-                        newText += "</b></font>";
-                    strText = prefix + newText + suffix;
-                    m_bChanged = true;
-                }
-            }
-            return strText;
-        }
-    }
-
     public void showRow(int row) {
         if (row < 0) row = 0;
         if (row > getRowCount() - 1) row = getRowCount() - 1;
@@ -458,8 +381,10 @@ public class SubLogTable extends JTable implements FocusListener, ActionListener
             nVisible = row + getVisibleRowCount() / 2;
         else
             nVisible = row - getVisibleRowCount() / 2;
-        if (nVisible < 0) nVisible = 0;
-        else if (nVisible > getRowCount() - 1) nVisible = getRowCount() - 1;
+        if (nVisible < 0)
+            nVisible = 0;
+        else if (nVisible > getRowCount() - 1)
+            nVisible = getRowCount() - 1;
         showRow(nVisible);
     }
 

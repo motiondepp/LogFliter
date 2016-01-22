@@ -376,7 +376,6 @@ public class LogFilterMain extends JFrame implements INotiEvent {
         pane.setLayout(new BorderLayout());
 
         pane.add(getOptionPanel(), BorderLayout.NORTH);
-        pane.add(getBookmarkPanel(), BorderLayout.WEST);
         pane.add(getStatusPanel(), BorderLayout.SOUTH);
         pane.add(getLogPanel(), BorderLayout.CENTER);
 
@@ -417,21 +416,11 @@ public class LogFilterMain extends JFrame implements INotiEvent {
 
     }
 
-    final String INI_FILE = CONFIG_BASE_DIR + File.separator + "LogFilter.ini";
     final String INI_FILE_CMD = CONFIG_BASE_DIR + File.separator + "LogFilterCmd.ini";
     final String INI_FILE_COLOR = CONFIG_BASE_DIR + File.separator + "LogFilterColor.ini";
     final String INI_FILE_STATE = CONFIG_BASE_DIR + File.separator + "LogFilterState.ser";
-    final String INI_LAST_DIR = "LAST_DIR";
     final String INI_CMD_COUNT = "CMD_COUNT";
     final String INI_CMD = "CMD_";
-    final String INI_FONT_TYPE = "FONT_TYPE";
-    final String INI_WORD_FIND = "WORD_FIND";
-    final String INI_WORD_REMOVE = "WORD_REMOVE";
-    final String INI_TAG_SHOW = "TAG_SHOW";
-    final String INI_TAG_REMOVE = "TAG_REMOVE";
-    final String INI_HIGHLIGHT = "HIGHLIGHT";
-    final String INI_PID_SHOW = "PID_SHOW";
-    final String INI_TID_SHOW = "TID_SHOW";
     final String INI_COLOR_0 = "INI_COLOR_0";
     final String INI_COLOR_1 = "INI_COLOR_1";
     final String INI_COLOR_2 = "INI_COLOR_2";
@@ -443,29 +432,6 @@ public class LogFilterMain extends JFrame implements INotiEvent {
     final String INI_COLOR_8 = "INI_COLOR_8(F)";
     final String INI_HIGILIGHT_COUNT = "INI_HIGILIGHT_COUNT";
     final String INI_HIGILIGHT_ = "INI_HIGILIGHT_";
-    final String INI_WIDTH = "INI_WIDTH";
-    final String INI_HEIGHT = "INI_HEIGHT";
-    final String INI_WINDOW_STATE = "INI_WINDOW_STATE";
-
-    final String INI_FILTER_LEVEL_V = "INI_FILTER_LEVEL_V";
-    final String INI_FILTER_LEVEL_D = "INI_FILTER_LEVEL_D";
-    final String INI_FILTER_LEVEL_I = "INI_FILTER_LEVEL_I";
-    final String INI_FILTER_LEVEL_W = "INI_FILTER_LEVEL_W";
-    final String INI_FILTER_LEVEL_E = "INI_FILTER_LEVEL_E";
-    final String INI_FILTER_LEVEL_F = "INI_FILTER_LEVEL_F";
-
-    final String INI_SHOW_COLUMN_MARK = "INI_SHOW_COLUMN_MARK";
-    final String INI_SHOW_COLUMN_LINE = "INI_SHOW_COLUMN_LINE";
-    final String INI_SHOW_COLUMN_DATE = "INI_SHOW_COLUMN_DATE";
-    final String INI_SHOW_COLUMN_TIME = "INI_SHOW_COLUMN_TIME";
-    final String INI_SHOW_COLUMN_LV = "INI_SHOW_COLUMN_LV";
-    final String INI_SHOW_COLUMN_PID = "INI_SHOW_COLUMN_PID";
-    final String INI_SHOW_COLUMN_TID = "INI_SHOW_COLUMN_TID";
-    final String INI_SHOW_COLUMN_TAG = "INI_SHOW_COLUMN_TAG";
-    final String INI_SHOW_COLUMN_MSG = "INI_SHOW_COLUMN_MSG";
-
-
-    final String INI_COMUMN = "INI_COMUMN_";
 
     void loadCmd() {
         try {
@@ -591,7 +557,7 @@ public class LogFilterMain extends JFrame implements INotiEvent {
         addDesc("Xinyu.he fork from https://github.com/iookill/LogFilter");
     }
 
-    void bookmarkItem(int nIndex, int nLine, boolean bBookmark) {
+    void markLogInfo(int nIndex, int nLine, boolean bBookmark) {
         synchronized (FILTER_LOCK) {
             LogInfo logInfo = m_arLogInfoAll.get(nLine);
             logInfo.setMarked(bBookmark);
@@ -1115,7 +1081,6 @@ public class LogFilterMain extends JFrame implements INotiEvent {
         m_chkClmTag.setSelected(true);
         m_chkClmMessage.setText("Msg");
         m_chkClmMessage.setSelected(true);
-        jpShowColumn.add(m_chkClmBookmark);
         jpShowColumn.add(m_chkClmLine);
         jpShowColumn.add(m_chkClmDate);
         jpShowColumn.add(m_chkClmTime);
@@ -1123,6 +1088,7 @@ public class LogFilterMain extends JFrame implements INotiEvent {
         jpShowColumn.add(m_chkClmPid);
         jpShowColumn.add(m_chkClmThread);
         jpShowColumn.add(m_chkClmTag);
+        jpShowColumn.add(m_chkClmBookmark);
         jpShowColumn.add(m_chkClmMessage);
 
         jpMain.add(jpLogFilter);
@@ -1363,20 +1329,23 @@ public class LogFilterMain extends JFrame implements INotiEvent {
     }
 
     Component getLogPanel() {
+        JPanel mainLogPanel = new JPanel(new BorderLayout());
+        mainLogPanel.add(getBookmarkPanel(), BorderLayout.WEST);
+
         m_tmLogTableModel = new LogFilterTableModel();
         m_tmLogTableModel.setData(m_arLogInfoAll);
         m_tbLogTable = new LogTable(m_tmLogTableModel, this);
         m_iLogParser = new LogCatParser();
         m_tbLogTable.setLogParser(m_iLogParser);
         m_logScrollVPane = new JScrollPane(m_tbLogTable);
+        mainLogPanel.add(m_logScrollVPane, BorderLayout.CENTER);
 
         m_tSubLogTableModel = new LogFilterTableModel();
         m_tSubLogTableModel.setData(m_arSubLogInfoAll);
         m_tSublogTable = new SubLogTable(m_tSubLogTableModel, this);
-
         m_subLogScrollVPane = new JScrollPane(m_tSublogTable);
 
-        mSplitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT, m_logScrollVPane, m_subLogScrollVPane);
+        mSplitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT, mainLogPanel, m_subLogScrollVPane);
         return mSplitPane;
     }
 
@@ -2176,6 +2145,7 @@ public class LogFilterMain extends JFrame implements INotiEvent {
         if (getLogTable().GetFilterToTime() == -1) {
             return true;
         }
+        T.d("checkToTimeFilter:" + logInfo.getTime() + " | " + logInfo.getTimestamp() + " | " + getLogTable().GetFilterToTime());
         return logInfo.getTimestamp() <= getLogTable().GetFilterToTime();
     }
 
@@ -2185,6 +2155,8 @@ public class LogFilterMain extends JFrame implements INotiEvent {
         if (getLogTable().GetFilterFromTime() == -1) {
             return true;
         }
+
+        T.d("checkFromTimeFilter:" + logInfo.getTime() + " | " + logInfo.getTimestamp() + " | " + getLogTable().GetFilterFromTime());
         return logInfo.getTimestamp() >= getLogTable().GetFilterFromTime();
     }
 
@@ -2605,7 +2577,7 @@ public class LogFilterMain extends JFrame implements INotiEvent {
                         for (int nIndex : arSelectedRow) {
                             LogInfo logInfo = m_tmLogTableModel.getRow(nIndex);
                             logInfo.setMarked(!logInfo.isMarked());
-                            bookmarkItem(nIndex, logInfo.getLine() - 1, logInfo.isMarked());
+                            markLogInfo(nIndex, logInfo.getLine() - 1, logInfo.isMarked());
                         }
                         getLogTable().repaint();
                     } else if (!e.isControlDown() && e.getID() == KeyEvent.KEY_PRESSED)
