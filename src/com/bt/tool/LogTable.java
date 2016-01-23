@@ -116,30 +116,34 @@ public class LogTable extends JTable implements FocusListener, ActionListener, I
             public void mouseReleased(MouseEvent e) {
                 Point p = e.getPoint();
                 int row = rowAtPoint(p);
+                int column = columnAtPoint(p);
+                if (row < 0 || row > getRowCount()) {
+                    return;
+                }
+
                 if (SwingUtilities.isLeftMouseButton(e)) {
                     if (e.getClickCount() == 2) {
                         LogInfo logInfo = ((LogFilterTableModel) getModel()).getRow(row);
                         logInfo.setMarked(!logInfo.isMarked());
                         m_LogFilterMain.markLogInfo(row, logInfo.getLine() - 1, logInfo.isMarked());
                     } else if (m_bAltPressed) {
-                        int colum = columnAtPoint(p);
                         LogInfo logInfo = ((LogFilterTableModel) getModel()).getRow(row);
-                        if (colum == LogFilterTableModel.COMUMN_TAG) {
-                            if (m_strTagShow.contains("|" + logInfo.getData(colum)))
-                                m_strTagShow = m_strTagShow.replace("|" + logInfo.getData(colum), "");
-                            else if (m_strTagShow.contains((String) logInfo.getData(colum)))
-                                m_strTagShow = m_strTagShow.replace((String) logInfo.getData(colum), "");
-                            else
-                                m_strTagShow += "|" + logInfo.getData(colum);
+                        if (column == LogFilterTableModel.COMUMN_TAG) {
+                            if (m_strTagShow.contains("|" + logInfo.getData(column))) {
+                                m_strTagShow = m_strTagShow.replace("|" + logInfo.getData(column), "");
+                            } else if (m_strTagShow.contains((String) logInfo.getData(column))) {
+                                m_strTagShow = m_strTagShow.replace((String) logInfo.getData(column), "");
+                            } else {
+                                m_strTagShow += "|" + logInfo.getData(column);
+                            }
                             m_LogFilterMain.notiEvent(new INotiEvent.EventParam(INotiEvent.TYPE.EVENT_CHANGE_FILTER_SHOW_TAG));
-                        } else if (colum == LogFilterTableModel.COMUMN_TIME) {
+                        } else if (column == LogFilterTableModel.COMUMN_TIME) {
                             m_LogFilterMain.notiEvent(
                                     new INotiEvent.EventParam(INotiEvent.TYPE.EVENT_CHANGE_FILTER_FROM_TIME, logInfo.getTime())
                             );
                         }
                     }
                 } else if (SwingUtilities.isRightMouseButton(e)) {
-                    int colum = columnAtPoint(p);
 
                     boolean hasSelected = false;
                     for (int sRow : getSelectedRows()) {
@@ -150,16 +154,16 @@ public class LogTable extends JTable implements FocusListener, ActionListener, I
                     }
                     if (!hasSelected) {
                         setRowSelectionInterval(row, row);
-                        setColumnSelectionInterval(colum, colum);
+                        setColumnSelectionInterval(column, column);
                     }
 
                     T.d("m_bAltPressed = " + m_bAltPressed);
                     if (m_bAltPressed) {
                         LogInfo logInfo = ((LogFilterTableModel) getModel()).getRow(row);
-                        if (colum == LogFilterTableModel.COMUMN_TAG) {
-                            m_strTagRemove += "|" + logInfo.getData(colum);
+                        if (column == LogFilterTableModel.COMUMN_TAG) {
+                            m_strTagRemove += "|" + logInfo.getData(column);
                             m_LogFilterMain.notiEvent(new INotiEvent.EventParam(INotiEvent.TYPE.EVENT_CHANGE_FILTER_REMOVE_TAG));
-                        } else if (colum == LogFilterTableModel.COMUMN_TIME) {
+                        } else if (column == LogFilterTableModel.COMUMN_TIME) {
                             m_LogFilterMain.notiEvent(
                                     new INotiEvent.EventParam(INotiEvent.TYPE.EVENT_CHANGE_FILTER_TO_TIME, logInfo.getTime())
                             );
