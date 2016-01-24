@@ -5,6 +5,7 @@ import com.bt.tool.annotation.FieldSaveState;
 import com.bt.tool.annotation.StateSaver;
 import com.bt.tool.annotation.TextFieldSaveState;
 import com.bt.tool.diff.DiffService;
+import com.bt.tool.stream.ProcessorConfig;
 
 import javax.swing.*;
 import javax.swing.border.Border;
@@ -314,8 +315,46 @@ public class LogFilterMain extends JFrame implements INotiEvent {
         diffMenu.add(sDisconnectDiffMenuItem);
         netMenu.add(diffMenu);
 
+        JMenu streamMenu = new JMenu("stream");
+        JCheckBoxMenuItem btaCBM = new JCheckBoxMenuItem("BTA event code", true);
+        btaCBM.addItemListener(new ItemListener() {
+            @Override
+            public void itemStateChanged(ItemEvent e) {
+                ProcessorConfig.BTAEventEnable = (e.getStateChange() == ItemEvent.SELECTED);
+            }
+        });
+        streamMenu.add(btaCBM);
+
+        JCheckBoxMenuItem adapterStateCBM = new JCheckBoxMenuItem("Bluetooth adapter state", true);
+        adapterStateCBM.addItemListener(new ItemListener() {
+            @Override
+            public void itemStateChanged(ItemEvent e) {
+                ProcessorConfig.BluetoothAdapterStateEnable = (e.getStateChange() == ItemEvent.SELECTED);
+            }
+        });
+        streamMenu.add(adapterStateCBM);
+
+        JCheckBoxMenuItem headsetStateCBM = new JCheckBoxMenuItem("Bluetooth headset state", true);
+        headsetStateCBM.addItemListener(new ItemListener() {
+            @Override
+            public void itemStateChanged(ItemEvent e) {
+                ProcessorConfig.HeadsetStateEnable = (e.getStateChange() == ItemEvent.SELECTED);
+            }
+        });
+        streamMenu.add(headsetStateCBM);
+
+        JCheckBoxMenuItem cievCBM = new JCheckBoxMenuItem("Bluetooth headset CIEV event", true);
+        cievCBM.addItemListener(new ItemListener() {
+            @Override
+            public void itemStateChanged(ItemEvent e) {
+                ProcessorConfig.HFPCIEVEnable = (e.getStateChange() == ItemEvent.SELECTED);
+            }
+        });
+        streamMenu.add(cievCBM);
+
         menubar.add(fileMenu);
         menubar.add(netMenu);
+        menubar.add(streamMenu);
         mainFrame.setJMenuBar(menubar);
 
         mainFrame.pack();
@@ -611,7 +650,7 @@ public class LogFilterMain extends JFrame implements INotiEvent {
         jpOptionDevice.setBorder(BorderFactory
                 .createTitledBorder("Device select"));
         jpOptionDevice.setLayout(new BorderLayout());
-        // jpOptionDevice.setPreferredSize(new Dimension(200, 100));
+//         jpOptionDevice.setPreferredSize(new Dimension(200, 100));
 
         JPanel jpCmd = new JPanel();
         m_comboDeviceCmd = new JComboBox<String>();
@@ -658,8 +697,44 @@ public class LogFilterMain extends JFrame implements INotiEvent {
                 }
             }
         });
-        jpOptionDevice.add(vbar);
+        jpOptionDevice.add(vbar, BorderLayout.CENTER);
 
+
+        JPanel cmdPanel = new JPanel(new BorderLayout());
+        JPanel funcPanel = new JPanel(new GridLayout(1, 4));
+        funcPanel.setPreferredSize(new Dimension(100, 20));
+        m_btnClear = new JButton("Clear");
+        m_btnClear.setMargin(new Insets(0, 0, 0, 0));
+        m_btnClear.setEnabled(false);
+        m_btnRun = new JButton("Run");
+        m_btnRun.setMargin(new Insets(0, 0, 0, 0));
+
+        m_tbtnPause = new JToggleButton("Pause");
+        m_tbtnPause.setMargin(new Insets(0, 0, 0, 0));
+        m_tbtnPause.setEnabled(false);
+        m_btnStop = new JButton("Stop");
+        m_btnStop.setMargin(new Insets(0, 0, 0, 0));
+        m_btnStop.setEnabled(false);
+        m_btnRun.addActionListener(m_alButtonListener);
+        m_btnStop.addActionListener(m_alButtonListener);
+        m_btnClear.addActionListener(m_alButtonListener);
+        m_tbtnPause.addActionListener(m_alButtonListener);
+
+        funcPanel.add(m_btnClear);
+        funcPanel.add(m_btnRun);
+        funcPanel.add(m_btnStop);
+        funcPanel.add(m_tbtnPause);
+        cmdPanel.add(funcPanel, BorderLayout.SOUTH);
+
+        JPanel adbPanel = new JPanel();
+        JLabel jlProcessCmd = new JLabel("Cmd : ");
+        m_comboCmd = new JComboBox<>();
+        m_comboCmd.setPreferredSize(new Dimension(180, 25));
+        adbPanel.add(jlProcessCmd);
+        adbPanel.add(m_comboCmd);
+        cmdPanel.add(adbPanel);
+
+        jpOptionDevice.add(cmdPanel, BorderLayout.SOUTH);
         return jpOptionDevice;
     }
 
@@ -1181,7 +1256,7 @@ public class LogFilterMain extends JFrame implements INotiEvent {
 
     Component getOptionMenu() {
         JPanel optionMenu = new JPanel(new BorderLayout());
-        JPanel optionWest = new JPanel();
+        JPanel optionWest = new JPanel(new FlowLayout(FlowLayout.LEADING));
 
         JLabel jlFont = new JLabel("Font Size : ");
         m_tfFontSize = new JTextField(2);
@@ -1209,27 +1284,6 @@ public class LogFilterMain extends JFrame implements INotiEvent {
                 }
             }
         });
-
-        JLabel jlProcessCmd = new JLabel("Cmd : ");
-        m_comboCmd = new JComboBox<>();
-        m_comboCmd.setPreferredSize(new Dimension(180, 25));
-
-        m_btnClear = new JButton("Clear");
-        m_btnClear.setMargin(new Insets(0, 0, 0, 0));
-        m_btnClear.setEnabled(false);
-        m_btnRun = new JButton("Run");
-        m_btnRun.setMargin(new Insets(0, 0, 0, 0));
-
-        m_tbtnPause = new JToggleButton("Pause");
-        m_tbtnPause.setMargin(new Insets(0, 0, 0, 0));
-        m_tbtnPause.setEnabled(false);
-        m_btnStop = new JButton("Stop");
-        m_btnStop.setMargin(new Insets(0, 0, 0, 0));
-        m_btnStop.setEnabled(false);
-        m_btnRun.addActionListener(m_alButtonListener);
-        m_btnStop.addActionListener(m_alButtonListener);
-        m_btnClear.addActionListener(m_alButtonListener);
-        m_tbtnPause.addActionListener(m_alButtonListener);
 
         mSyncScrollCheckBox = new JCheckBox("sync scroll");
         mSyncScrollCheckBox.setEnabled(false);
@@ -1278,17 +1332,11 @@ public class LogFilterMain extends JFrame implements INotiEvent {
         optionWest.add(m_comboEncode);
         optionWest.add(jlGoto);
         optionWest.add(tfGoto);
-        optionWest.add(jlProcessCmd);
-        optionWest.add(m_comboCmd);
-        optionWest.add(m_btnClear);
-        optionWest.add(m_btnRun);
-        optionWest.add(m_tbtnPause);
-        optionWest.add(m_btnStop);
 
         optionWest.add(preHistoryButton);
         optionWest.add(nextHistoryButton);
 
-        optionMenu.add(optionWest, BorderLayout.WEST);
+        optionMenu.add(optionWest, BorderLayout.CENTER);
         return optionMenu;
     }
 
@@ -1494,34 +1542,34 @@ public class LogFilterMain extends JFrame implements INotiEvent {
         m_arLogInfoAll.set(nLine, logInfo);
     }
 
-    void setDeviceList() {
-        m_strSelectedDevice = "";
+    private String[] getValidCmd() {
+        String strCommand = DEVICES_CMD[m_comboDeviceCmd.getSelectedIndex()];
+        if (m_comboDeviceCmd.getSelectedIndex() == DEVICES_CUSTOM)
+            strCommand = (String) m_comboDeviceCmd.getSelectedItem();
+        String[] cmd;
+        if (OSUtil.isWindows()) {
+            cmd = new String[]{"cmd.exe", "/C", strCommand};
+        } else {
+            cmd = new String[]{"/bin/bash", "-l", "-c", strCommand};
+        }
+        return cmd;
+    }
 
-        DefaultListModel<TargetDevice> listModel = (DefaultListModel<TargetDevice>) m_lDeviceList
-                .getModel();
+    private void addDevicesToListModelFromCmd(String[] cmd, DefaultListModel<TargetDevice> listModel) {
         try {
             listModel.clear();
-            String s;
-            String strCommand = DEVICES_CMD[m_comboDeviceCmd.getSelectedIndex()];
-            if (m_comboDeviceCmd.getSelectedIndex() == DEVICES_CUSTOM)
-                strCommand = (String) m_comboDeviceCmd.getSelectedItem();
-            Process oProcess = Runtime.getRuntime().exec(strCommand);
+            ProcessBuilder processBuilder = new ProcessBuilder(cmd);
+            processBuilder.redirectErrorStream(true);
+            Process oProcess = processBuilder.start();
 
-            //
             BufferedReader stdOut = new BufferedReader(new InputStreamReader(
                     oProcess.getInputStream()));
-            BufferedReader stdError = new BufferedReader(new InputStreamReader(
-                    oProcess.getErrorStream()));
 
-            //
+            String s;
             while ((s = stdOut.readLine()) != null) {
-                if (!s.equals("List of devices attached ") && s.length() != 0) {
+                if (!s.equals("List of devices attached") && s.length() != 0) {
                     listModel.addElement(new TargetDevice(s));
                 }
-            }
-            while ((s = stdError.readLine()) != null) {
-                if (s.length() != 0)
-                    listModel.addElement(new TargetDevice(s));
             }
         } catch (Exception e) {
             T.e("e = " + e);
@@ -1532,6 +1580,22 @@ public class LogFilterMain extends JFrame implements INotiEvent {
     public void setSearchFocus() {
 //        m_tfFindWord.requestFocus();
         m_tfSearch.requestFocus();
+    }
+
+    private void setHighLightFocus() {
+        m_tfHighlight.requestFocus();
+    }
+
+    private void setWordIncludeFocus() {
+        m_tfFindWord.requestFocus();
+    }
+
+    private void setTagIncludeFocus() {
+        m_tfShowTag.requestFocus();
+    }
+
+    private void setMainTableFocus() {
+        m_tbLogTable.requestFocus();
     }
 
     public void searchKeyword(String keyword) {
@@ -2182,8 +2246,11 @@ public class LogFilterMain extends JFrame implements INotiEvent {
 
     ActionListener m_alButtonListener = new ActionListener() {
         public void actionPerformed(ActionEvent e) {
-            if (e.getSource().equals(m_btnDevice))
-                setDeviceList();
+            if (e.getSource().equals(m_btnDevice)) {
+                m_strSelectedDevice = "";
+                String[] cmd = getValidCmd();
+                addDevicesToListModelFromCmd(cmd, (DefaultListModel<TargetDevice>) m_lDeviceList.getModel());
+            }
             else if (e.getSource().equals(m_btnSetFont)) {
                 getLogTable().setFontSize(Integer.parseInt(m_tfFontSize
                         .getText()));
@@ -2591,6 +2658,26 @@ public class LogFilterMain extends JFrame implements INotiEvent {
                 case KeyEvent.VK_F:
                     if (e.getID() == KeyEvent.KEY_PRESSED && ctrlPressed) {
                         setSearchFocus();
+                    }
+                    break;
+                case KeyEvent.VK_H:
+                    if (e.getID() == KeyEvent.KEY_PRESSED && ctrlPressed) {
+                        setHighLightFocus();
+                    }
+                    break;
+                case KeyEvent.VK_W:
+                    if (e.getID() == KeyEvent.KEY_PRESSED && ctrlPressed) {
+                        setWordIncludeFocus();
+                    }
+                    break;
+                case KeyEvent.VK_T:
+                    if (e.getID() == KeyEvent.KEY_PRESSED && ctrlPressed) {
+                        setTagIncludeFocus();
+                    }
+                    break;
+                case KeyEvent.VK_B:
+                    if (e.getID() == KeyEvent.KEY_PRESSED && ctrlPressed) {
+                        setMainTableFocus();
                     }
                     break;
                 case KeyEvent.VK_F5:
