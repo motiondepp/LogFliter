@@ -269,7 +269,9 @@ public class LogFilterMain extends JFrame implements INotiEvent {
 
         m_recentMenu = new RecentFileMenu("RecentFile", 10) {
             public void onSelectFile(String filePath) {
+                File recentFile = new File(filePath);
                 mainFrame.parseFile(new File(filePath));
+                m_recentMenu.addEntry(recentFile.getAbsolutePath());
             }
         };
 
@@ -365,7 +367,9 @@ public class LogFilterMain extends JFrame implements INotiEvent {
         if (args != null && args.length > 0) {
             EventQueue.invokeLater(new Runnable() {
                 public void run() {
-                    mainFrame.parseFile(new File(args[0]));
+                    File argFile = new File(args[0]);
+                    mainFrame.parseFile(argFile.getAbsoluteFile());
+                    m_recentMenu.addEntry(argFile.getAbsolutePath());
                 }
             });
         }
@@ -1632,6 +1636,7 @@ public class LogFilterMain extends JFrame implements INotiEvent {
 
                                 stopProcess();
                                 parseFile(file);
+                                m_recentMenu.addEntry(file.getAbsolutePath());
                             }
                         } catch (Exception e) {
                             e.printStackTrace();

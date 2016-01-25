@@ -101,18 +101,25 @@ public abstract class RecentFileMenu extends JMenu {
         }
         //clear the existing items
         this.removeAll();
-        //move everything down one slot
-        int count = this.itemCount - 1;
-        for (int index = count; index > 0; index--) {
-            //check for duplicate entry
-            if (!this.recentEntries[index - 1].equalsIgnoreCase(filePath)) {
-                this.recentEntries[index] = new String(this.recentEntries[index - 1]);
+
+        int idx = -1;
+        for (int i = 0; i < this.itemCount; i++) {
+            if (this.recentEntries[i].equalsIgnoreCase(filePath)) {
+                idx = i;
+                break;
             }
         }
-        //add the new item, check if it's not alredy the first item
-        if (!this.recentEntries[0].equalsIgnoreCase(filePath)) {
-            this.recentEntries[0] = new String(filePath);
+        if (idx != -1) {
+            for (int i = idx; i > 0; i--) {
+                this.recentEntries[i] = this.recentEntries[i - 1];
+            }
+        } else {
+            for (int i = this.itemCount - 1; i > 0; i--) {
+                this.recentEntries[i] = this.recentEntries[i - 1];
+            }
         }
+        this.recentEntries[0] = filePath;
+
         //add items back to the menu
         for (int index = 0; index < this.itemCount; index++) {
             JMenuItem menuItem = new JMenuItem();
@@ -135,8 +142,7 @@ public abstract class RecentFileMenu extends JMenu {
         if (updateFile) {
             try {
                 FileWriter writer = new FileWriter(new File(this.pathToSavedFile));
-                int topIndex = this.itemCount - 1;
-                for (int index = topIndex; index >= 0; index--) {
+                for (int index = this.itemCount - 1; index >= 0; index--) {
                     if (!this.recentEntries[index].equals(defaultText)) {
                         writer.write(this.recentEntries[index]);
                         writer.write("\n");
