@@ -21,16 +21,26 @@ public class LogCatParser implements ILogParser {
     public MessagePostProcessor mMessagePostProcessor;
 
     public LogCatParser() {
-        BTAEventProcessor btaEventProcessor = new BTAEventProcessor("BTA_event_conf.json");
-        BluetoothAdapterStateProcessor bluetoothAdapterStateProcessor = new BluetoothAdapterStateProcessor();
-        HFPCIEVEventProcessor hfpcievEventProcessor = new HFPCIEVEventProcessor();
-        HeadsetStateProcessor headsetStateProcessor = new HeadsetStateProcessor();
+        loadProcessorFromConfig();
+    }
 
-        mMessagePostProcessor = new BaseEventProcessor();
-        mMessagePostProcessor.setNextProcessor(btaEventProcessor);
-        btaEventProcessor.setNextProcessor(bluetoothAdapterStateProcessor);
-        bluetoothAdapterStateProcessor.setNextProcessor(hfpcievEventProcessor);
-        hfpcievEventProcessor.setNextProcessor(headsetStateProcessor);
+    public void loadProcessorFromConfig() {
+        MessagePostProcessor baseEventProcessor = new BaseEventProcessor();
+        MessagePostProcessor nextProcessor = baseEventProcessor;
+
+        if (ProcessorConfig.BTAEventEnable) {
+            nextProcessor = (MessagePostProcessor) nextProcessor.setNextProcessor(new BTAEventProcessor("BTA_event_conf.json"));
+        }
+        if (ProcessorConfig.BluetoothAdapterStateEnable) {
+            nextProcessor = (MessagePostProcessor) nextProcessor.setNextProcessor(new BluetoothAdapterStateProcessor());
+        }
+        if (ProcessorConfig.HFPCIEVEnable) {
+            nextProcessor = (MessagePostProcessor) nextProcessor.setNextProcessor(new HFPCIEVEventProcessor());
+        }
+        if (ProcessorConfig.HeadsetStateEnable) {
+            nextProcessor = (MessagePostProcessor) nextProcessor.setNextProcessor(new HeadsetStateProcessor());
+        }
+        mMessagePostProcessor = baseEventProcessor;
     }
 
     public Color getColor(LogInfo logInfo) {

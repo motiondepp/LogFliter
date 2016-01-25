@@ -5,7 +5,6 @@ import com.bt.tool.annotation.FieldSaveState;
 import com.bt.tool.annotation.StateSaver;
 import com.bt.tool.annotation.TextFieldSaveState;
 import com.bt.tool.diff.DiffService;
-import com.bt.tool.stream.ProcessorConfig;
 
 import javax.swing.*;
 import javax.swing.border.Border;
@@ -316,38 +315,43 @@ public class LogFilterMain extends JFrame implements INotiEvent {
         netMenu.add(diffMenu);
 
         JMenu streamMenu = new JMenu("stream");
-        JCheckBoxMenuItem btaCBM = new JCheckBoxMenuItem("BTA event code", true);
+        JCheckBoxMenuItem btaCBM = new JCheckBoxMenuItem("BTA event code", false);
         btaCBM.addItemListener(new ItemListener() {
             @Override
             public void itemStateChanged(ItemEvent e) {
                 ProcessorConfig.BTAEventEnable = (e.getStateChange() == ItemEvent.SELECTED);
+                mainFrame.m_iLogParser.loadProcessorFromConfig();
+
             }
         });
         streamMenu.add(btaCBM);
 
-        JCheckBoxMenuItem adapterStateCBM = new JCheckBoxMenuItem("Bluetooth adapter state", true);
+        JCheckBoxMenuItem adapterStateCBM = new JCheckBoxMenuItem("Bluetooth adapter state", false);
         adapterStateCBM.addItemListener(new ItemListener() {
             @Override
             public void itemStateChanged(ItemEvent e) {
                 ProcessorConfig.BluetoothAdapterStateEnable = (e.getStateChange() == ItemEvent.SELECTED);
+                mainFrame.m_iLogParser.loadProcessorFromConfig();
             }
         });
         streamMenu.add(adapterStateCBM);
 
-        JCheckBoxMenuItem headsetStateCBM = new JCheckBoxMenuItem("Bluetooth headset state", true);
+        JCheckBoxMenuItem headsetStateCBM = new JCheckBoxMenuItem("Bluetooth headset state", false);
         headsetStateCBM.addItemListener(new ItemListener() {
             @Override
             public void itemStateChanged(ItemEvent e) {
                 ProcessorConfig.HeadsetStateEnable = (e.getStateChange() == ItemEvent.SELECTED);
+                mainFrame.m_iLogParser.loadProcessorFromConfig();
             }
         });
         streamMenu.add(headsetStateCBM);
 
-        JCheckBoxMenuItem cievCBM = new JCheckBoxMenuItem("Bluetooth headset CIEV event", true);
+        JCheckBoxMenuItem cievCBM = new JCheckBoxMenuItem("Bluetooth headset CIEV event", false);
         cievCBM.addItemListener(new ItemListener() {
             @Override
             public void itemStateChanged(ItemEvent e) {
                 ProcessorConfig.HFPCIEVEnable = (e.getStateChange() == ItemEvent.SELECTED);
+                mainFrame.m_iLogParser.loadProcessorFromConfig();
             }
         });
         streamMenu.add(cievCBM);
@@ -1384,7 +1388,6 @@ public class LogFilterMain extends JFrame implements INotiEvent {
         m_tmLogTableModel.setData(m_arLogInfoAll);
         m_tbLogTable = new LogTable(m_tmLogTableModel, this);
         m_iLogParser = new LogCatParser();
-        m_tbLogTable.setLogParser(m_iLogParser);
         m_logScrollVPane = new JScrollPane(m_tbLogTable);
         mainLogPanel.add(m_logScrollVPane, BorderLayout.CENTER);
 
@@ -1542,7 +1545,7 @@ public class LogFilterMain extends JFrame implements INotiEvent {
         m_arLogInfoAll.set(nLine, logInfo);
     }
 
-    private String[] getValidCmd() {
+    private String[] getADBValidCmd() {
         String strCommand = DEVICES_CMD[m_comboDeviceCmd.getSelectedIndex()];
         if (m_comboDeviceCmd.getSelectedIndex() == DEVICES_CUSTOM)
             strCommand = (String) m_comboDeviceCmd.getSelectedItem();
@@ -1567,7 +1570,7 @@ public class LogFilterMain extends JFrame implements INotiEvent {
 
             String s;
             while ((s = stdOut.readLine()) != null) {
-                if (!s.equals("List of devices attached") && s.length() != 0) {
+                if (!s.startsWith("List of devices attached") && s.length() != 0) {
                     listModel.addElement(new TargetDevice(s));
                 }
             }
@@ -2248,7 +2251,7 @@ public class LogFilterMain extends JFrame implements INotiEvent {
         public void actionPerformed(ActionEvent e) {
             if (e.getSource().equals(m_btnDevice)) {
                 m_strSelectedDevice = "";
-                String[] cmd = getValidCmd();
+                String[] cmd = getADBValidCmd();
                 addDevicesToListModelFromCmd(cmd, (DefaultListModel<TargetDevice>) m_lDeviceList.getModel());
             }
             else if (e.getSource().equals(m_btnSetFont)) {

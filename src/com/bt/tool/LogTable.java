@@ -14,7 +14,6 @@ public class LogTable extends JTable implements FocusListener, ActionListener, I
     private static final long serialVersionUID = 1L;
 
     LogFilterMain m_LogFilterMain;
-    ILogParser m_iLogParser;
     String m_strSearchHighlight;
     String m_strHighlight;
     String m_strPidShow;
@@ -668,10 +667,6 @@ public class LogTable extends JTable implements FocusListener, ActionListener, I
     public void setFontSize(int nFontSize) {
         m_fFontSize = nFontSize;
         setRowHeight(nFontSize + 4);
-    }
-
-    public void setLogParser(ILogParser iLogParser) {
-        m_iLogParser = iLogParser;
     }
 
     public void setValueAt(Object aValue, int row, int column) {

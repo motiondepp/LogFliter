@@ -2,21 +2,15 @@ package com.bt.tool;
 
 import java.awt.*;
 
-/**
- *
- */
-
-
-/**
- *
- */
 public interface ILogParser {
-    public static final int TYPE_ANDROID_DDMS = 0;
-    public static final int TYPE_ANDROID_LOGCAT = 1;
+    int TYPE_ANDROID_DDMS = 0;
+    int TYPE_ANDROID_LOGCAT = 1;
 
-    public LogInfo parseLog(String strText);
+    LogInfo parseLog(String strText);
 
-    public Color getColor(LogInfo logInfo);
+    Color getColor(LogInfo logInfo);
 
-    public int getLogLV(LogInfo logInfo);
+    int getLogLV(LogInfo logInfo);
+
+    void loadProcessorFromConfig();
 }

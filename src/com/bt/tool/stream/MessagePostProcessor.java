@@ -37,8 +37,9 @@ public abstract class MessagePostProcessor implements IPostProcessor<LogInfo> {
         this.enable = enable;
     }
 
-    public void setNextProcessor(IPostProcessor<LogInfo> mNextProcessor) {
+    public IPostProcessor<LogInfo> setNextProcessor(IPostProcessor<LogInfo> mNextProcessor) {
         this.mNextProcessor = mNextProcessor;
+        return mNextProcessor;
     }
 
     public IPostProcessor getNextProcessor() {
