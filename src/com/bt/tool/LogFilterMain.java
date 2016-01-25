@@ -309,19 +309,17 @@ public class LogFilterMain extends JFrame implements INotiEvent {
             }
         });
 
-
         diffMenu.add(sConnectDiffMenuItem);
         diffMenu.add(sDisconnectDiffMenuItem);
         netMenu.add(diffMenu);
 
-        JMenu streamMenu = new JMenu("stream");
+        JMenu streamMenu = new JMenu("Stream");
         JCheckBoxMenuItem btaCBM = new JCheckBoxMenuItem("BTA event code", false);
         btaCBM.addItemListener(new ItemListener() {
             @Override
             public void itemStateChanged(ItemEvent e) {
                 ProcessorConfig.BTAEventEnable = (e.getStateChange() == ItemEvent.SELECTED);
                 mainFrame.m_iLogParser.loadProcessorFromConfig();
-
             }
         });
         streamMenu.add(btaCBM);
