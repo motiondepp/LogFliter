@@ -191,7 +191,17 @@ public class LogTable extends JTable implements FocusListener, ActionListener, I
     private JPopupMenu createRightClickPopUp() {
 
         JPopupMenu menuPopup = new JPopupMenu();
-        JMenuItem copyToClipboard = new JMenuItem(new AbstractAction("copy column to clipboard") {
+        JMenuItem copycolumnToClipboard = new JMenuItem(new AbstractAction("copy column to clipboard") {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                int[] selColumns = getSelectedColumns();
+                if (selColumns.length != 0) {
+
+                    copySelectedColumn();
+                }
+            }
+        });
+        JMenuItem copyRowToClipboard = new JMenuItem(new AbstractAction("copy row to clipboard") {
             @Override
             public void actionPerformed(ActionEvent e) {
                 copySelectedRows();
@@ -239,7 +249,7 @@ public class LogTable extends JTable implements FocusListener, ActionListener, I
         JMenuItem compareMenuItem = new JMenuItem(new AbstractAction("compare with selected in connected LogFilter") {
             @Override
             public void actionPerformed(ActionEvent e) {
-                String target = getFormatSelectedRows(LogFilterTableModel.COMUMN_LINE, LogFilterTableModel.COMUMN_DATE);
+                String target = getFormatSelectedRows(new int[]{LogFilterTableModel.COMUMN_LINE, LogFilterTableModel.COMUMN_DATE});
                 if (target != null && target.length() != 0) {
                     m_LogFilterMain.mDiffService.writeDiffCommand(
                             DiffService.DiffServiceCmdType.COMPARE,
@@ -250,7 +260,7 @@ public class LogTable extends JTable implements FocusListener, ActionListener, I
         });
 
         menuPopup.add(markMenuItem);
-        menuPopup.add(copyToClipboard);
+        menuPopup.add(copyRowToClipboard);
         if (m_LogFilterMain.mDiffService.isDiffConnected()) {
             if (getSelectedRowCount() == 1) {
                 menuPopup.add(findInDiffMenuItem);
@@ -856,11 +866,15 @@ public class LogTable extends JTable implements FocusListener, ActionListener, I
         copySelectedRows();
     }
 
-    public void copySelectedRows() {
-        Utils.sendContentToClipboard(getFormatSelectedRows(LogFilterTableModel.COMUMN_LINE));
+    public void copySelectedColumn(int column) {
+        Utils.sendContentToClipboard(getFormatSelectedRows(new int[]{LogFilterTableModel.COMUMN_LINE}));
     }
 
-    public String getFormatSelectedRows(int... exceptColumnIndex) {
+    public void copySelectedRows() {
+        Utils.sendContentToClipboard(getFormatSelectedRows(new int[]{LogFilterTableModel.COMUMN_LINE}));
+    }
+
+    public String getFormatSelectedRows(int[] exceptColumnIndex) {
         StringBuilder sbf = new StringBuilder();
         int numRows = getSelectedRowCount();
         int[] rowsSelected = getSelectedRows();
