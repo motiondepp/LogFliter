@@ -885,9 +885,6 @@ public class LogTable extends JTable implements FocusListener, ActionListener, I
             for (int j = 0; j < m_arbShow.length; j++) {
                 if (m_arbShow[j] && maxColWidth[j] != 0) {
                     StringBuilder strTemp = new StringBuilder(String.valueOf(getValueAt(rowsSelected[i], j)).trim());
-                    if (j == LogFilterTableModel.COMUMN_BOOKMARK) {
-                        strTemp.insert(0, "<").append(">");
-                    }
                     if (j != LogFilterTableModel.COMUMN_MESSAGE) {
                         int len = strTemp.length();
                         for (int k = 0; k < maxColWidth[j] - len; k++)
