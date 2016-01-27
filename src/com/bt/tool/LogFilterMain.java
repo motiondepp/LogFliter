@@ -2811,7 +2811,9 @@ public class LogFilterMain extends JFrame implements INotiEvent {
     }
 
     public void compareWithSelectedRows(String targetRows) {
-        String fmtRows = m_tbLogTable.getFormatSelectedRows(LogFilterTableModel.COMUMN_LINE, LogFilterTableModel.COMUMN_TIME);
+        String fmtRows = m_tbLogTable.getFormatSelectedRows(
+                new int[]{LogFilterTableModel.COMUMN_LINE, LogFilterTableModel.COMUMN_TIME}
+        );
         if (fmtRows == null || fmtRows.length() == 0) {
             return;
         }

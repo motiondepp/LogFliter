@@ -9,6 +9,8 @@ import java.awt.*;
 import java.awt.event.*;
 import java.text.ParseException;
 import java.util.BitSet;
+import java.util.HashSet;
+import java.util.Set;
 
 public class LogTable extends JTable implements FocusListener, ActionListener, ILogRenderResolver {
     private static final long serialVersionUID = 1L;
@@ -196,8 +198,7 @@ public class LogTable extends JTable implements FocusListener, ActionListener, I
             public void actionPerformed(ActionEvent e) {
                 int[] selColumns = getSelectedColumns();
                 if (selColumns.length != 0) {
-
-                    copySelectedColumn();
+                    copySelectedColumn(selColumns);
                 }
             }
         });
@@ -261,6 +262,7 @@ public class LogTable extends JTable implements FocusListener, ActionListener, I
 
         menuPopup.add(markMenuItem);
         menuPopup.add(copyRowToClipboard);
+        menuPopup.add(copycolumnToClipboard);
         if (m_LogFilterMain.mDiffService.isDiffConnected()) {
             if (getSelectedRowCount() == 1) {
                 menuPopup.add(findInDiffMenuItem);
@@ -866,8 +868,21 @@ public class LogTable extends JTable implements FocusListener, ActionListener, I
         copySelectedRows();
     }
 
-    public void copySelectedColumn(int column) {
-        Utils.sendContentToClipboard(getFormatSelectedRows(new int[]{LogFilterTableModel.COMUMN_LINE}));
+    public void copySelectedColumn(int[] column) {
+        Set<Integer> target = new HashSet<>();
+        for (int j = 0; j < m_arbShow.length; j++) {
+            target.add(j);
+        }
+        for (int col : column)
+            target.remove(col);
+        target.add(LogFilterTableModel.COMUMN_LINE);
+
+        int[] result = new int[target.size()];
+        int i = 0;
+        for (int col : target) {
+            result[i++] = col;
+        }
+        Utils.sendContentToClipboard(getFormatSelectedRows(result));
     }
 
     public void copySelectedRows() {
