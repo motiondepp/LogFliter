@@ -2212,22 +2212,22 @@ public class LogFilterMain extends JFrame implements INotiEvent {
 
     boolean checkToTimeFilter(LogInfo logInfo) {
         if (logInfo.getTimestamp() == -1)
-            return false;
+            return true;
         if (getLogTable().GetFilterToTime() == -1) {
             return true;
         }
-        T.d("checkToTimeFilter:" + logInfo.getTime() + " | " + logInfo.getTimestamp() + " | " + getLogTable().GetFilterToTime());
+//        T.d("checkToTimeFilter:" + logInfo.getTime() + " | " + logInfo.getTimestamp() + " | " + getLogTable().GetFilterToTime());
         return logInfo.getTimestamp() <= getLogTable().GetFilterToTime();
     }
 
     boolean checkFromTimeFilter(LogInfo logInfo) {
         if (logInfo.getTimestamp() == -1)
-            return false;
+            return true;
         if (getLogTable().GetFilterFromTime() == -1) {
             return true;
         }
 
-        T.d("checkFromTimeFilter:" + logInfo.getTime() + " | " + logInfo.getTimestamp() + " | " + getLogTable().GetFilterFromTime());
+//        T.d("checkFromTimeFilter:" + logInfo.getTime() + " | " + logInfo.getTimestamp() + " | " + getLogTable().GetFilterFromTime());
         return logInfo.getTimestamp() >= getLogTable().GetFilterFromTime();
     }
 
