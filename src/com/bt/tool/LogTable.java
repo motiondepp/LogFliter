@@ -12,6 +12,7 @@ import java.awt.event.MouseEvent;
 
 public class LogTable extends BaseLogTable {
     private static final long serialVersionUID = 1L;
+    private DiffService mDiffService;
 
     public LogTable(LogFilterTableModel tablemodel, LogFilterMain filterMain) {
         super(tablemodel, filterMain);
@@ -33,7 +34,7 @@ public class LogTable extends BaseLogTable {
                     if (e.getClickCount() == 2) {
                         LogInfo logInfo = ((LogFilterTableModel) getModel()).getRow(row);
                         logInfo.setMarked(!logInfo.isMarked());
-                        m_LogFilterMain.markLogInfo(row, logInfo.getLine() - 1, logInfo.isMarked());
+                        mBaseLogTableListener.markLogInfo(row, logInfo.getLine() - 1, logInfo.isMarked());
                     } else if (m_bAltPressed) {
                         LogInfo logInfo = ((LogFilterTableModel) getModel()).getRow(row);
                         if (column == LogFilterTableModel.COMUMN_TAG) {
@@ -44,9 +45,9 @@ public class LogTable extends BaseLogTable {
                             } else {
                                 m_strTagShow += "|" + logInfo.getData(column);
                             }
-                            m_LogFilterMain.notiEvent(new INotiEvent.EventParam(INotiEvent.TYPE.EVENT_CHANGE_FILTER_SHOW_TAG));
+                            mBaseLogTableListener.notiEvent(new INotiEvent.EventParam(INotiEvent.TYPE.EVENT_CHANGE_FILTER_SHOW_TAG));
                         } else if (column == LogFilterTableModel.COMUMN_TIME) {
-                            m_LogFilterMain.notiEvent(
+                            mBaseLogTableListener.notiEvent(
                                     new INotiEvent.EventParam(INotiEvent.TYPE.EVENT_CHANGE_FILTER_FROM_TIME, logInfo.getTime())
                             );
                         }
@@ -70,9 +71,9 @@ public class LogTable extends BaseLogTable {
                         LogInfo logInfo = ((LogFilterTableModel) getModel()).getRow(row);
                         if (column == LogFilterTableModel.COMUMN_TAG) {
                             m_strTagRemove += "|" + logInfo.getData(column);
-                            m_LogFilterMain.notiEvent(new INotiEvent.EventParam(INotiEvent.TYPE.EVENT_CHANGE_FILTER_REMOVE_TAG));
+                            mBaseLogTableListener.notiEvent(new INotiEvent.EventParam(INotiEvent.TYPE.EVENT_CHANGE_FILTER_REMOVE_TAG));
                         } else if (column == LogFilterTableModel.COMUMN_TIME) {
-                            m_LogFilterMain.notiEvent(
+                            mBaseLogTableListener.notiEvent(
                                     new INotiEvent.EventParam(INotiEvent.TYPE.EVENT_CHANGE_FILTER_TO_TIME, logInfo.getTime())
                             );
                         }
@@ -156,7 +157,7 @@ public class LogTable extends BaseLogTable {
                 for (int selectedRow : selectedRows) {
                     LogInfo logInfo = ((LogFilterTableModel) getModel()).getRow(selectedRow);
                     logInfo.setMarked(!logInfo.isMarked());
-                    m_LogFilterMain.markLogInfo(selectedRow, logInfo.getLine() - 1, logInfo.isMarked());
+                    mBaseLogTableListener.markLogInfo(selectedRow, logInfo.getLine() - 1, logInfo.isMarked());
                 }
             }
         });
@@ -166,10 +167,12 @@ public class LogTable extends BaseLogTable {
                 LogInfo logInfo = ((LogFilterTableModel) getModel()).getRow(getSelectedRow());
                 String target = logInfo.getData(getSelectedColumn()).toString();
                 if (target.trim().length() != 0) {
-                    m_LogFilterMain.mDiffService.writeDiffCommand(
-                            DiffService.DiffServiceCmdType.FIND,
-                            target
-                    );
+                    if (mDiffService != null) {
+                        mDiffService.writeDiffCommand(
+                                DiffService.DiffServiceCmdType.FIND,
+                                target
+                        );
+                    }
                 }
             }
         });
@@ -180,10 +183,12 @@ public class LogTable extends BaseLogTable {
                 LogInfo logInfo = ((LogFilterTableModel) getModel()).getRow(getSelectedRow());
                 String target = logInfo.getData(getSelectedColumn()).toString();
                 if (target.trim().length() != 0) {
-                    m_LogFilterMain.mDiffService.writeDiffCommand(
-                            DiffService.DiffServiceCmdType.FIND_SIMILAR,
-                            target
-                    );
+                    if (mDiffService != null) {
+                        mDiffService.writeDiffCommand(
+                                DiffService.DiffServiceCmdType.FIND_SIMILAR,
+                                target
+                        );
+                    }
                 }
             }
         });
@@ -193,10 +198,12 @@ public class LogTable extends BaseLogTable {
             public void actionPerformed(ActionEvent e) {
                 String target = getFormatSelectedRows(new int[]{LogFilterTableModel.COMUMN_LINE, LogFilterTableModel.COMUMN_DATE});
                 if (target != null && target.length() != 0) {
-                    m_LogFilterMain.mDiffService.writeDiffCommand(
-                            DiffService.DiffServiceCmdType.COMPARE,
-                            target
-                    );
+                    if (mDiffService != null) {
+                        mDiffService.writeDiffCommand(
+                                DiffService.DiffServiceCmdType.COMPARE,
+                                target
+                        );
+                    }
                 }
             }
         });
@@ -204,7 +211,7 @@ public class LogTable extends BaseLogTable {
         menuPopup.add(markMenuItem);
         menuPopup.add(copyRowToClipboard);
         menuPopup.add(copycolumnToClipboard);
-        if (m_LogFilterMain.mDiffService.isDiffConnected()) {
+        if (mDiffService != null && mDiffService.isDiffConnected()) {
             if (getSelectedRowCount() == 1) {
                 menuPopup.add(findInDiffMenuItem);
                 menuPopup.add(findSimilarInDiffMenuItem);
@@ -218,5 +225,13 @@ public class LogTable extends BaseLogTable {
 
     public boolean isCellEditable(int row, int column) {
         return column == LogFilterTableModel.COMUMN_BOOKMARK;
+    }
+
+    public DiffService getDiffService() {
+        return mDiffService;
+    }
+
+    public void setDiffService(DiffService mDiffService) {
+        this.mDiffService = mDiffService;
     }
 }

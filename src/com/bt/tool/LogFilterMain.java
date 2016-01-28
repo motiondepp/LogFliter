@@ -22,7 +22,7 @@ import java.util.*;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class LogFilterMain extends JFrame implements INotiEvent {
+public class LogFilterMain extends JFrame implements INotiEvent, BaseLogTable.BaseLogTableListener {
     private static final long serialVersionUID = 1L;
 
     static final String LOGFILTER = "LogFilter";
@@ -602,7 +602,7 @@ public class LogFilterMain extends JFrame implements INotiEvent {
         addDesc("Xinyu.he fork from https://github.com/iookill/LogFilter");
     }
 
-    void markLogInfo(int nIndex, int nLine, boolean bBookmark) {
+    public void markLogInfo(int nIndex, int nLine, boolean bBookmark) {
         synchronized (FILTER_LOCK) {
             LogInfo logInfo = m_arLogInfoAll.get(nLine);
             logInfo.setMarked(bBookmark);
@@ -1541,7 +1541,8 @@ public class LogFilterMain extends JFrame implements INotiEvent {
         }
     }
 
-    void setBookmark(int nLine, String strBookmark) {
+    @Override
+    public void onSetBookmark(int nLine, String strBookmark) {
         LogInfo logInfo = m_arLogInfoAll.get(nLine);
         logInfo.setBookmark(strBookmark);
         m_arLogInfoAll.set(nLine, logInfo);
@@ -1939,36 +1940,7 @@ public class LogFilterMain extends JFrame implements INotiEvent {
                                 }
                                 logInfo = m_arLogInfoAll.get(nIndex);
 
-                                if (m_ipIndicator.m_chBookmark.isSelected()
-                                        || m_ipIndicator.m_chError.isSelected()) {
-                                    bAddFilteredArray = false;
-                                    if (logInfo.isMarked()
-                                            && m_ipIndicator.m_chBookmark
-                                            .isSelected()) {
-                                        bAddFilteredArray = true;
-                                        m_hmMarkedInfoFiltered.put(logInfo.getLine() - 1,
-                                                m_arLogInfoFiltered.size());
-                                        if (logInfo.getLogLV().equals("E")
-                                                || logInfo.getLogLV()
-                                                .equals("ERROR"))
-                                            m_hmErrorFiltered.put(logInfo.getLine() - 1,
-                                                    m_arLogInfoFiltered.size());
-                                    }
-                                    if ((logInfo.getLogLV().equals("E") || logInfo.getLogLV()
-                                            .equals("ERROR"))
-                                            && m_ipIndicator.m_chError
-                                            .isSelected()) {
-                                        bAddFilteredArray = true;
-                                        m_hmErrorFiltered.put(logInfo.getLine() - 1,
-                                                m_arLogInfoFiltered.size());
-                                        if (logInfo.isMarked())
-                                            m_hmMarkedInfoFiltered.put(logInfo.getLine() - 1,
-                                                    m_arLogInfoFiltered.size());
-                                    }
-
-                                    if (bAddFilteredArray)
-                                        m_arLogInfoFiltered.add(logInfo);
-                                } else if (checkLogLVFilter(logInfo)
+                                if (checkLogLVFilter(logInfo)
                                         && checkPidFilter(logInfo)
                                         && checkTidFilter(logInfo)
                                         && checkShowTagFilter(logInfo)
@@ -1978,22 +1950,51 @@ public class LogFilterMain extends JFrame implements INotiEvent {
                                         && checkFromTimeFilter(logInfo)
                                         && checkToTimeFilter(logInfo)
                                         && checkBookmarkFilter(logInfo)) {
-                                    m_arLogInfoFiltered.add(logInfo);
-                                    if (logInfo.isMarked())
-                                        m_hmMarkedInfoFiltered.put(logInfo.getLine() - 1,
-                                                m_arLogInfoFiltered.size());
-                                    if (logInfo.getLogLV().equals("E")
-                                            || logInfo.getLogLV()
-                                            .equals("ERROR"))
-                                        m_hmErrorFiltered.put(logInfo.getLine() - 1,
-                                                m_arLogInfoFiltered.size());
+                                    if (m_ipIndicator.m_chBookmark.isSelected()
+                                            || m_ipIndicator.m_chError.isSelected()) {
+                                        bAddFilteredArray = false;
+                                        if (logInfo.isMarked()
+                                                && m_ipIndicator.m_chBookmark
+                                                .isSelected()) {
+                                            bAddFilteredArray = true;
+                                            m_hmMarkedInfoFiltered.put(logInfo.getLine() - 1,
+                                                    m_arLogInfoFiltered.size());
+                                            if (logInfo.getLogLV().equals("E")
+                                                    || logInfo.getLogLV()
+                                                    .equals("ERROR"))
+                                                m_hmErrorFiltered.put(logInfo.getLine() - 1,
+                                                        m_arLogInfoFiltered.size());
+                                        }
+                                        if ((logInfo.getLogLV().equals("E") || logInfo.getLogLV().equals("ERROR"))
+                                                && m_ipIndicator.m_chError
+                                                .isSelected()) {
+                                            bAddFilteredArray = true;
+                                            m_hmErrorFiltered.put(logInfo.getLine() - 1,
+                                                    m_arLogInfoFiltered.size());
+                                            if (logInfo.isMarked())
+                                                m_hmMarkedInfoFiltered.put(logInfo.getLine() - 1,
+                                                        m_arLogInfoFiltered.size());
+                                        }
+
+                                        if (bAddFilteredArray)
+                                            m_arLogInfoFiltered.add(logInfo);
+                                    } else {
+                                        m_arLogInfoFiltered.add(logInfo);
+                                        if (logInfo.isMarked())
+                                            m_hmMarkedInfoFiltered.put(logInfo.getLine() - 1,
+                                                    m_arLogInfoFiltered.size());
+                                        if (logInfo.getLogLV().equals("E")
+                                                || logInfo.getLogLV()
+                                                .equals("ERROR"))
+                                            m_hmErrorFiltered.put(logInfo.getLine() - 1,
+                                                    m_arLogInfoFiltered.size());
+                                    }
                                 }
                             }
                             if (m_nChangedFilter == STATUS_PARSING) {
                                 m_nChangedFilter = STATUS_READY;
                                 m_tmLogTableModel.setData(m_arLogInfoFiltered);
-                                m_ipIndicator
-                                        .setData(m_arLogInfoFiltered,
+                                m_ipIndicator.setData(m_arLogInfoFiltered,
                                                 m_hmMarkedInfoFiltered,
                                                 m_hmErrorFiltered);
                                 LogInfo latestInfo = getLogTable().getLatestSelectedLogInfo();
@@ -2013,7 +2014,10 @@ public class LogFilterMain extends JFrame implements INotiEvent {
                             }
                         }
                     }
+                } catch (InterruptedException e) {
+                    System.out.println("m_thFilterParse exit normal");
                 } catch (Exception e) {
+                    e.printStackTrace();
                     T.e(e);
                 }
                 System.out.println("End m_thFilterParse thread");
@@ -2796,6 +2800,7 @@ public class LogFilterMain extends JFrame implements INotiEvent {
         int port = 20000 + new Random().nextInt(10000);
         m_tfDiffPort.setText("port: " + port);
         mDiffService = new DiffService(this, port);
+        m_tbLogTable.setDiffService(mDiffService);
     }
 
     public LogTable getLogTable() {

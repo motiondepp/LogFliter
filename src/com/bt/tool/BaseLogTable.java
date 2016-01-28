@@ -14,7 +14,7 @@ import java.util.Set;
  */
 public abstract class BaseLogTable extends JTable implements FocusListener, ActionListener, ILogRenderResolver {
 
-    LogFilterMain m_LogFilterMain;
+    BaseLogTableListener mBaseLogTableListener;
     String m_strSearchHighlight;
     String m_strHighlight;
     String m_strPidShow;
@@ -28,20 +28,21 @@ public abstract class BaseLogTable extends JTable implements FocusListener, Acti
     boolean[] m_arbShow;
     boolean m_bAltPressed;
 
-    private long mFilterToTime = -1;
-    private long mFilterFromTime = -1;
+    protected long mFilterToTime = -1;
+    protected long mFilterFromTime = -1;
 
     public int mMaxShownCol = 0;
     public int mMinShownCol = LogFilterTableModel.COMUMN_MAX - 1;
     protected int mMaxSelectedRow;
     protected int mMinSelectedRow;
-    private LogInfo m_latestSelectLogInfo;
-    private int mLastSelectedRow;
+    protected LogInfo m_latestSelectLogInfo;
+    protected int mLastSelectedRow;
+    private boolean mHistoryEnable;
     private LogInfoHistory curHistoryInfo = new LogInfoHistory();
 
-    public BaseLogTable(TableModel model, LogFilterMain filterMain) {
+    public BaseLogTable(TableModel model, BaseLogTableListener filterMain) {
         super(model);
-        m_LogFilterMain = filterMain;
+        mBaseLogTableListener = filterMain;
         m_strSearchHighlight = "";
         m_strHighlight = "";
         m_strPidShow = "";
@@ -52,6 +53,7 @@ public abstract class BaseLogTable extends JTable implements FocusListener, Acti
         m_strFilterRemove = "";
         m_strFilterFind = "";
         m_arbShow = new boolean[LogFilterTableModel.COMUMN_MAX];
+        mHistoryEnable = true;
         init();
         setColumnWidth();
     }
@@ -94,20 +96,24 @@ public abstract class BaseLogTable extends JTable implements FocusListener, Acti
     }
 
     public void changeSelection(int rowIndex, int columnIndex, boolean toggle, boolean extend, boolean bMove, boolean addHistory) {
-        if (rowIndex < 0) rowIndex = 0;
-        if (rowIndex > getRowCount() - 1) rowIndex = getRowCount() - 1;
+        if (rowIndex < 0)
+            rowIndex = 0;
+        if (rowIndex > getRowCount() - 1)
+            rowIndex = getRowCount() - 1;
         super.changeSelection(rowIndex, columnIndex, toggle, extend);
 
-        LogInfo logInfo = ((LogFilterTableModel) getModel()).getRow(rowIndex);
-        if (logInfo != m_latestSelectLogInfo) {
-            m_LogFilterMain.onSelectedRowChanged(mLastSelectedRow, rowIndex, logInfo);
-            if (addHistory)
-                handleHistorySelectionChanged(logInfo);
+        if (rowIndex >= getModel().getRowCount()) {
+            LogInfo logInfo = ((LogFilterTableModel) getModel()).getRow(rowIndex);
+            if (logInfo != m_latestSelectLogInfo) {
+                mBaseLogTableListener.onSelectedRowChanged(mLastSelectedRow, rowIndex, logInfo);
+                if (addHistory && isHistoryEnable())
+                    handleHistorySelectionChanged(logInfo);
+            }
+            m_latestSelectLogInfo = logInfo;
+            mLastSelectedRow = rowIndex;
+            if (bMove)
+                showRow(rowIndex);
         }
-        m_latestSelectLogInfo = logInfo;
-        mLastSelectedRow = rowIndex;
-        if (bMove)
-            showRow(rowIndex);
     }
 
     public LogInfo getLatestSelectedLogInfo() {
@@ -278,6 +284,14 @@ public abstract class BaseLogTable extends JTable implements FocusListener, Acti
         LogFilterTableModel.ColWidth[vColIndex] = width;
     }
 
+    public boolean isHistoryEnable() {
+        return mHistoryEnable;
+    }
+
+    public void setHistoryEnable(boolean mHistoryEnable) {
+        this.mHistoryEnable = mHistoryEnable;
+    }
+
     public class ColumnHeaderListener extends MouseAdapter {
         public void mouseClicked(MouseEvent evt) {
 
@@ -436,7 +450,7 @@ public abstract class BaseLogTable extends JTable implements FocusListener, Acti
         LogInfo logInfo = ((LogFilterTableModel) getModel()).getRow(row);
         if (column == LogFilterTableModel.COMUMN_BOOKMARK) {
             logInfo.setBookmark((String) aValue);
-            m_LogFilterMain.setBookmark(logInfo.getLine() - 1, (String) aValue);
+            mBaseLogTableListener.onSetBookmark(logInfo.getLine() - 1, (String) aValue);
         }
     }
 
@@ -727,5 +741,16 @@ public abstract class BaseLogTable extends JTable implements FocusListener, Acti
             showRowCenterIfNotInRect(minIdx, true);
             return;
         }
+    }
+
+    public interface BaseLogTableListener {
+
+        void onSelectedRowChanged(int mLastSelectedRow, int rowIndex, LogInfo logInfo);
+
+        void onSetBookmark(int i, String aValue);
+
+        void notiEvent(INotiEvent.EventParam eventParam);
+
+        void markLogInfo(int selectedRow, int i, boolean b);
     }
 }

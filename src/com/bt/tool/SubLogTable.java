@@ -12,6 +12,7 @@ public class SubLogTable extends BaseLogTable {
     public SubLogTable(LogFilterTableModel tablemodel, LogFilterMain filterMain) {
         super(tablemodel, filterMain);
         initListener();
+        setHistoryEnable(false);
     }
 
     private void initListener() {
@@ -57,7 +58,7 @@ public class SubLogTable extends BaseLogTable {
     }
 
     private void showInfoInLogTable(LogInfo logInfo) {
-        m_LogFilterMain.notiEvent(
+        mBaseLogTableListener.notiEvent(
                 new INotiEvent.EventParam(INotiEvent.TYPE.EVENT_CHANGE_SELECTION, logInfo)
         );
     }
@@ -76,7 +77,7 @@ public class SubLogTable extends BaseLogTable {
                 }
                 for (int i = 0; i < selectedRows.length; i++) {
                     LogInfo info = selectedInfo[i];
-                    m_LogFilterMain.markLogInfo(selectedRows[i], info.getLine() - 1, !info.isMarked());
+                    mBaseLogTableListener.markLogInfo(selectedRows[i], info.getLine() - 1, !info.isMarked());
                 }
 
             }
