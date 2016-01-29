@@ -628,7 +628,7 @@ public class LogFilterMain extends JFrame implements INotiEvent, BaseLogTable.Ba
                 return o1.getLine() - o2.getLine();
             }
         });
-        updateSubTable(-1, false);
+        updateSubTable(-1);
     }
 
     void clearData() {
@@ -1852,6 +1852,8 @@ public class LogFilterMain extends JFrame implements INotiEvent, BaseLogTable.Ba
                             }
                         }
                     }
+                } catch (InterruptedException e) {
+                    T.e(e);
                 } catch (Exception e) {
                     e.printStackTrace();
                     T.e(e);
@@ -2333,10 +2335,10 @@ public class LogFilterMain extends JFrame implements INotiEvent, BaseLogTable.Ba
         if (nRow >= 0)
             getLogTable().changeSelection(nRow, 0, false, false, bMove);
 
-        updateSubTable(nRow, bMove);
+        updateSubTable(-1);
     }
 
-    void updateSubTable(int nRow, boolean bMove) {
+    void updateSubTable(int nRow) {
 //        System.out.println("updateSubTable nRow:" + nRow + " | " + bMove);
         m_tSubLogTableModel.fireTableDataChanged();
         m_subLogScrollVPane.validate();

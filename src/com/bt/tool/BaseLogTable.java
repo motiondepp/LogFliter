@@ -102,7 +102,7 @@ public abstract class BaseLogTable extends JTable implements FocusListener, Acti
             rowIndex = getRowCount() - 1;
         super.changeSelection(rowIndex, columnIndex, toggle, extend);
 
-        if (rowIndex >= getModel().getRowCount()) {
+        if (rowIndex >= getModel().getRowCount() - 1) {
             LogInfo logInfo = ((LogFilterTableModel) getModel()).getRow(rowIndex);
             if (logInfo != m_latestSelectLogInfo) {
                 mBaseLogTableListener.onSelectedRowChanged(mLastSelectedRow, rowIndex, logInfo);
