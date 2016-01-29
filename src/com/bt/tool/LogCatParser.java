@@ -226,7 +226,7 @@ public class LogCatParser implements ILogParser {
             try {
                 logInfo.setTimestamp(TIMESTAMP_FORMAT.parse(logInfo.getTime()).getTime());
             } catch (ParseException e) {
-                e.printStackTrace();
+//                e.printStackTrace();
             }
         }
         if (stk.hasMoreElements()) {

@@ -40,6 +40,7 @@ public class LogFilterMain extends JFrame implements INotiEvent, BaseLogTable.Ba
     final String ANDROID_EVENT_CMD = "logcat -b events -v time";
     final String ANDROID_RADIO_CMD = "logcat -b radio -v time";
     final String ANDROID_CUSTOM_CMD = "shell cat /proc/kmsg";
+    //    final String ANDROID_CUSTOM_CMD = "logcat -v time -f /dev/kmsg | cat /proc/kmsg";
     final String ANDROID_DEFAULT_CMD_FIRST = "adb ";
     final String ANDROID_SELECTED_CMD_FIRST = "adb -s ";
     // final String ANDROID_SELECTED_CMD_LAST = " logcat -v time ";
@@ -2043,9 +2044,6 @@ public class LogFilterMain extends JFrame implements INotiEvent, BaseLogTable.Ba
                     BufferedReader stdOut = new BufferedReader(
                             new InputStreamReader(m_Process.getInputStream(),
                                     "UTF-8"));
-
-                    // BufferedWriter fileOut = new BufferedWriter(new
-                    // FileWriter(m_strLogFileName));
                     Writer fileOut = new BufferedWriter(new OutputStreamWriter(
                             new FileOutputStream(m_strLogFileName), "UTF-8"));
 
