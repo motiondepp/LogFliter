@@ -32,9 +32,11 @@ public class LogTable extends BaseLogTable {
 
                 if (SwingUtilities.isLeftMouseButton(e)) {
                     if (e.getClickCount() == 2) {
-                        LogInfo logInfo = ((LogFilterTableModel) getModel()).getRow(row);
-                        logInfo.setMarked(!logInfo.isMarked());
-                        mBaseLogTableListener.markLogInfo(row, logInfo.getLine() - 1, logInfo.isMarked());
+                        if (column != LogFilterTableModel.COMUMN_BOOKMARK) {
+                            LogInfo logInfo = ((LogFilterTableModel) getModel()).getRow(row);
+                            logInfo.setMarked(!logInfo.isMarked());
+                            mBaseLogTableListener.markLogInfo(row, logInfo.getLine() - 1, logInfo.isMarked());
+                        }
                     } else if (m_bAltPressed) {
                         LogInfo logInfo = ((LogFilterTableModel) getModel()).getRow(row);
                         if (column == LogFilterTableModel.COMUMN_TAG) {

@@ -21,14 +21,16 @@ public class SubLogTable extends BaseLogTable {
             public void mouseReleased(MouseEvent e) {
                 Point p = e.getPoint();
                 int row = rowAtPoint(p);
+                int column = columnAtPoint(p);
                 if (SwingUtilities.isLeftMouseButton(e)) {
                     if (e.getClickCount() == 2) {
-                        LogInfo logInfo = ((LogFilterTableModel) getModel()).getRow(row);
-                        showInfoInLogTable(logInfo);
+                        if (column != LogFilterTableModel.COMUMN_BOOKMARK) {
+                            LogInfo logInfo = ((LogFilterTableModel) getModel()).getRow(row);
+                            showInfoInLogTable(logInfo);
+                        }
                     } else if (m_bAltPressed) {
                     }
                 } else if (SwingUtilities.isRightMouseButton(e)) {
-                    int colum = columnAtPoint(p);
 
                     boolean hasSelected = false;
                     for (int sRow : getSelectedRows()) {
@@ -39,7 +41,7 @@ public class SubLogTable extends BaseLogTable {
                     }
                     if (!hasSelected) {
                         setRowSelectionInterval(row, row);
-                        setColumnSelectionInterval(colum, colum);
+                        setColumnSelectionInterval(column, column);
                     }
 
                     T.d("m_bAltPressed = " + m_bAltPressed);
@@ -114,5 +116,9 @@ public class SubLogTable extends BaseLogTable {
         }
 
         return menuPopup;
+    }
+
+    public boolean isCellEditable(int row, int column) {
+        return column == LogFilterTableModel.COMUMN_BOOKMARK;
     }
 }
