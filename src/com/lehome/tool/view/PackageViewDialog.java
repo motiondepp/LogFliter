@@ -8,7 +8,10 @@ import javax.swing.*;
 import javax.swing.table.JTableHeader;
 import javax.swing.table.TableColumnModel;
 import java.awt.*;
-import java.awt.event.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 
 /**
  * Created by xinyu.he on 2016/2/5.
@@ -18,9 +21,11 @@ public class PackageViewDialog extends JDialog {
     private PackageViewPresenter mPackageViewPresenter;
     private PackageViewTableModel mPackageViewTableModel;
     private JTable mMainTable;
+    private JButton mRefreshButton;
+    private JProgressBar mProgressBar;
 
-    public PackageViewDialog(JFrame frame, String deviceId, PackageViewDialogListener listener) {
-        super( frame, "Packages", true );
+    public PackageViewDialog(JFrame frame, String title, String deviceId, PackageViewDialogListener listener) {
+        super(frame, title, true);
 
         mPackageViewPresenter = new PackageViewPresenter(this, deviceId);
         this.mListener = listener;
@@ -31,14 +36,18 @@ public class PackageViewDialog extends JDialog {
 
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.TRAILING));
 
-        JButton refreshButton = new JButton("Refresh");
-        refreshButton.addActionListener(new ActionListener() {
+        mProgressBar = new JProgressBar();
+        mProgressBar.setVisible(false);
+        buttonPanel.add(mProgressBar);
+
+        mRefreshButton = new JButton("Refresh");
+        mRefreshButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
                 mPackageViewPresenter.onRefreshButtonPressed();
             }
         });
-        buttonPanel.add(refreshButton);
+        buttonPanel.add(mRefreshButton);
         c.add(buttonPanel, BorderLayout.SOUTH);
 
         this.pack();
@@ -75,8 +84,8 @@ public class PackageViewDialog extends JDialog {
                 }
 
                 if (SwingUtilities.isLeftMouseButton(e)) {
-                    if (e.getClickCount() == 2 && column == 0) {
-                        String value = (String) mMainTable.getModel().getValueAt(row, column);
+                    if (e.getClickCount() == 2) {
+                        String value = (String) mMainTable.getModel().getValueAt(row, 0);
                         if (mListener != null) {
                             mListener.onFliterPidSelected(value);
                         }
@@ -111,6 +120,18 @@ public class PackageViewDialog extends JDialog {
                 mPackageViewPresenter.onColumnHeaderClicked(vColIndex);
             }
         }
+    }
+
+    public void onStartLoadingPackages() {
+        mProgressBar.setVisible(true);
+        mProgressBar.setIndeterminate(true);
+        mRefreshButton.setEnabled(false);
+    }
+
+    public void onStopLoadingPackages() {
+        mProgressBar.setVisible(false);
+        mProgressBar.setIndeterminate(false);
+        mRefreshButton.setEnabled(true);
     }
 
     public interface PackageViewDialogListener {

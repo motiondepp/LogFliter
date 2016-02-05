@@ -170,7 +170,7 @@ public class LogFilterMain extends JFrame implements INotiEvent, BaseLogTable.Ba
     JButton m_btnStop;
 
     String m_strLogFileName;
-    String m_strSelectedDevice;
+    TargetDevice m_selectedDevice;
     // String m_strProcessCmd;
     Process m_Process;
     Thread m_thProcess;
@@ -318,7 +318,7 @@ public class LogFilterMain extends JFrame implements INotiEvent, BaseLogTable.Ba
         netMenu.add(diffMenu);
 
         JMenu streamMenu = new JMenu("Stream");
-        JCheckBoxMenuItem btaCBM = new JCheckBoxMenuItem("BTA event code", false);
+        JCheckBoxMenuItem btaCBM = new JCheckBoxMenuItem("BTA event code", true);
         btaCBM.addItemListener(new ItemListener() {
             @Override
             public void itemStateChanged(ItemEvent e) {
@@ -328,7 +328,7 @@ public class LogFilterMain extends JFrame implements INotiEvent, BaseLogTable.Ba
         });
         streamMenu.add(btaCBM);
 
-        JCheckBoxMenuItem adapterStateCBM = new JCheckBoxMenuItem("Bluetooth adapter state", false);
+        JCheckBoxMenuItem adapterStateCBM = new JCheckBoxMenuItem("Bluetooth adapter state", true);
         adapterStateCBM.addItemListener(new ItemListener() {
             @Override
             public void itemStateChanged(ItemEvent e) {
@@ -709,11 +709,7 @@ public class LogFilterMain extends JFrame implements INotiEvent, BaseLogTable.Ba
         m_lDeviceList.addListSelectionListener(new ListSelectionListener() {
             public void valueChanged(ListSelectionEvent e) {
                 JList deviceList = (JList) e.getSource();
-                TargetDevice selectedItem = (TargetDevice) deviceList.getSelectedValue();
-                m_strSelectedDevice = "";
-                if (selectedItem != null) {
-                    m_strSelectedDevice = selectedItem.code;
-                }
+                m_selectedDevice = (TargetDevice) deviceList.getSelectedValue();
             }
         });
         jpOptionDevice.add(vbar, BorderLayout.CENTER);
@@ -1746,12 +1742,12 @@ public class LogFilterMain extends JFrame implements INotiEvent, BaseLogTable.Ba
 
     String getProcessCmd() {
         if (m_lDeviceList.getSelectedIndex() < 0
-                || m_strSelectedDevice == null
-                || m_strSelectedDevice.length() == 0)
+                || m_selectedDevice == null
+                || m_selectedDevice.code.length() == 0)
             return ANDROID_DEFAULT_CMD_FIRST + m_comboCmd.getSelectedItem();
         else
             return ANDROID_SELECTED_CMD_FIRST
-                    + m_strSelectedDevice
+                    + m_selectedDevice.code
                     + " "
                     + m_comboCmd.getSelectedItem();
     }
@@ -2267,7 +2263,7 @@ public class LogFilterMain extends JFrame implements INotiEvent, BaseLogTable.Ba
     ActionListener m_alButtonListener = new ActionListener() {
         public void actionPerformed(ActionEvent e) {
             if (e.getSource().equals(m_btnDevice)) {
-                m_strSelectedDevice = "";
+                m_selectedDevice = null;
                 String[] cmd = getADBValidCmd();
                 addDevicesToListModelFromCmd(cmd, (DefaultListModel<TargetDevice>) m_lDeviceList.getModel());
             }
@@ -2742,7 +2738,13 @@ public class LogFilterMain extends JFrame implements INotiEvent, BaseLogTable.Ba
     }
 
     private void openPackagesView() {
-        PackageViewDialog packageViewDialog = new PackageViewDialog(this, m_strSelectedDevice, new PackageViewDialog.PackageViewDialogListener() {
+        String title = "packages";
+        String deviceID = null;
+        if (m_selectedDevice != null) {
+            title = m_selectedDevice.toString();
+            deviceID = m_selectedDevice.code;
+        }
+        PackageViewDialog packageViewDialog = new PackageViewDialog(this, title, deviceID, new PackageViewDialog.PackageViewDialogListener() {
 
             @Override
             public void onFliterPidSelected(String value) {

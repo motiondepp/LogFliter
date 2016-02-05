@@ -30,36 +30,47 @@ public class PackageViewPresenter {
     }
 
     private void refreshPackageData() {
-        PackageViewTableModel model = (PackageViewTableModel) this.mPackageViewDialog.getMainTable().getModel();
-        model.getData().clear();
-        model.fireTableDataChanged();
+        new Thread() {
+            @Override
+            public void run() {
+                mPackageViewDialog.onStartLoadingPackages();
 
-        T.d("getting zygoteID");
-        String[] getPPIDCmd = getADBValidCmd("ps | grep zygote");
-        String PPIDResult = processCmd(getPPIDCmd);
-        if (PPIDResult != null) {
-            try {
-                String zygoteID = PPIDResult.split("\\s+")[1];
-                T.d("got zygoteID: " + zygoteID);
-                String[] getPackageCmd = getADBValidCmd("ps | grep " + "\\\" " + zygoteID + " \\\"");
-                String packageResult = processCmd(getPackageCmd);
-                for(String item: packageResult.split("\n")) {
-                    T.d("got package: " + item);
-                    String[] infos = item.split("\\s+");
-                    PackageViewTableModel.PackageInfo newInfo = new PackageViewTableModel.PackageInfo();
-                    newInfo.pid = infos[1];
-                    newInfo.name = infos[8];
-                    model.getData().add(newInfo);
-                }
+                PackageViewTableModel model = (PackageViewTableModel) mPackageViewDialog.getMainTable().getModel();
+                model.getData().clear();
                 model.fireTableDataChanged();
-            }catch (Exception e) {
-                T.d(e);
+
+                T.d("getting zygoteID");
+                String[] getPPIDCmd = getADBValidCmd("ps | grep zygote");
+                String PPIDResult = processCmd(getPPIDCmd);
+                if (PPIDResult != null) {
+                    try {
+                        String zygoteID = PPIDResult.split("\\s+")[1];
+                        T.d("got zygoteID: " + zygoteID);
+                        String[] getPackageCmd = getADBValidCmd("ps | grep " + "\\\" " + zygoteID + " \\\"");
+                        String packageResult = processCmd(getPackageCmd);
+                        if (packageResult != null) {
+                            for (String item : packageResult.split("\n")) {
+                                T.d("got package: " + item);
+                                String[] infos = item.split("\\s+");
+                                PackageViewTableModel.PackageInfo newInfo = new PackageViewTableModel.PackageInfo();
+                                newInfo.pid = infos[1];
+                                newInfo.name = infos[8];
+                                model.getData().add(newInfo);
+                            }
+                        }
+                        model.fireTableDataChanged();
+                    } catch (Exception e) {
+                        T.d(e);
+                    }
+                }
+
+                mPackageViewDialog.onStopLoadingPackages();
             }
-        }
+        }.start();
     }
 
     private String[] getADBValidCmd(String customCmd) {
-        if (mDeviceId != null) {
+        if (mDeviceId != null && mDeviceId.length() != 0) {
             customCmd = "adb -s " + mDeviceId + " shell \"" + customCmd + "\"";
         }else {
             customCmd = "adb shell \"" + customCmd + "\"";
