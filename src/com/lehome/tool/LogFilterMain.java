@@ -359,6 +359,29 @@ public class LogFilterMain extends JFrame implements INotiEvent, BaseLogTable.Ba
         });
         streamMenu.add(cievCBM);
 
+        JMenu viewMenu = initAndGetViewMenu(mainFrame);
+
+        menubar.add(fileMenu);
+        menubar.add(netMenu);
+        menubar.add(streamMenu);
+        menubar.add(viewMenu);
+        mainFrame.setJMenuBar(menubar);
+
+        mainFrame.pack();
+        mainFrame.restoreSplitPane();
+
+        if (args != null && args.length > 0) {
+            EventQueue.invokeLater(new Runnable() {
+                public void run() {
+                    File argFile = new File(args[0]);
+                    mainFrame.parseFile(argFile.getAbsoluteFile());
+                    m_recentMenu.addEntry(argFile.getAbsolutePath());
+                }
+            });
+        }
+    }
+
+    private static JMenu initAndGetViewMenu(final LogFilterMain mainFrame) {
         JMenu viewMenu = new JMenu("View");
         JMenuItem packagesMenuItem = new JMenuItem("Show Running Packages");
         packagesMenuItem.setToolTipText("show running packages on current android device");
@@ -396,23 +419,54 @@ public class LogFilterMain extends JFrame implements INotiEvent, BaseLogTable.Ba
         });
         viewMenu.add(pendingIntentMenuItem);
 
-        menubar.add(fileMenu);
-        menubar.add(netMenu);
-        menubar.add(streamMenu);
-        menubar.add(viewMenu);
-        mainFrame.setJMenuBar(menubar);
+        JMenuItem meminfoMenuItem = new JMenuItem("Show Memory Info");
+        meminfoMenuItem.setToolTipText("show memory info on current android device");
+        meminfoMenuItem.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent event) {
+                mainFrame.openDumpsysView("dumpsys meminfo");
+            }
+        });
+        viewMenu.add(meminfoMenuItem);
 
-        mainFrame.pack();
-        mainFrame.restoreSplitPane();
+        JMenuItem cpuinfoMenuItem = new JMenuItem("Show CPU Info");
+        cpuinfoMenuItem.setToolTipText("show CPU info on current android device");
+        cpuinfoMenuItem.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent event) {
+                mainFrame.openDumpsysView("dumpsys cpuinfo");
+            }
+        });
+        viewMenu.add(cpuinfoMenuItem);
 
-        if (args != null && args.length > 0) {
-            EventQueue.invokeLater(new Runnable() {
-                public void run() {
-                    File argFile = new File(args[0]);
-                    mainFrame.parseFile(argFile.getAbsoluteFile());
-                    m_recentMenu.addEntry(argFile.getAbsolutePath());
-                }
-            });
+        JMenu customMenu = new JMenu("Custom Info");
+        loadCustomMenu(mainFrame, customMenu);
+        viewMenu.add(customMenu);
+        return viewMenu;
+    }
+
+    private static void loadCustomMenu(final LogFilterMain mainFrame, JMenu customMenu) {
+        Properties p = new Properties();
+        try {
+            p.load(new FileInputStream(INI_FILE_DUMPSYS));
+        } catch (FileNotFoundException e) {
+            T.d(INI_FILE_DUMPSYS + " not exist!");
+            return;
+        } catch (IOException e) {
+            e.printStackTrace();
+            return;
+        }
+        Enumeration names = p.propertyNames();
+        while (names.hasMoreElements()) {
+            String name = (String) names.nextElement();
+            final String cmd = p.getProperty(name);
+            if (cmd != null) {
+                JMenuItem newMenuItem = new JMenuItem(name);
+                newMenuItem.addActionListener(new ActionListener() {
+                    public void actionPerformed(ActionEvent event) {
+                        mainFrame.openDumpsysView(cmd);
+                    }
+                });
+                customMenu.add(newMenuItem);
+            }
         }
     }
 
@@ -502,9 +556,10 @@ public class LogFilterMain extends JFrame implements INotiEvent, BaseLogTable.Ba
 
     }
 
-    final String INI_FILE_CMD = CONFIG_BASE_DIR + File.separator + "LogFilterCmd.ini";
-    final String INI_FILE_COLOR = CONFIG_BASE_DIR + File.separator + "LogFilterColor.ini";
-    final String INI_FILE_STATE = CONFIG_BASE_DIR + File.separator + "LogFilterState.ser";
+    final static String INI_FILE_CMD = CONFIG_BASE_DIR + File.separator + "LogFilterCmd.ini";
+    final static String INI_FILE_COLOR = CONFIG_BASE_DIR + File.separator + "LogFilterColor.ini";
+    final static String INI_FILE_STATE = CONFIG_BASE_DIR + File.separator + "LogFilterState.ser";
+    final static String INI_FILE_DUMPSYS = CONFIG_BASE_DIR + File.separator + "LogFilterDumpsysCmd.ini";
     final String INI_CMD_COUNT = "CMD_COUNT";
     final String INI_CMD = "CMD_";
     final String INI_COLOR_0 = "INI_COLOR_0";
