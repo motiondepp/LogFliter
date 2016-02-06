@@ -373,10 +373,28 @@ public class LogFilterMain extends JFrame implements INotiEvent, BaseLogTable.Ba
         ActivitiesMenuItem.setToolTipText("show running activities on current android device");
         ActivitiesMenuItem.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent event) {
-                mainFrame.openActivitiesView();
+                mainFrame.openDumpsysView("dumpsys activity activities");
             }
         });
         viewMenu.add(ActivitiesMenuItem);
+
+        JMenuItem pendingAlarmMenuItem = new JMenuItem("Show Pending Alarms");
+        pendingAlarmMenuItem.setToolTipText("show pending alarms on current android device");
+        pendingAlarmMenuItem.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent event) {
+                mainFrame.openDumpsysView("dumpsys alarm");
+            }
+        });
+        viewMenu.add(pendingAlarmMenuItem);
+
+        JMenuItem pendingIntentMenuItem = new JMenuItem("Show Pending Intents");
+        pendingIntentMenuItem.setToolTipText("show pending intents on current android device");
+        pendingIntentMenuItem.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent event) {
+                mainFrame.openDumpsysView("dumpsys activity intents");
+            }
+        });
+        viewMenu.add(pendingIntentMenuItem);
 
         menubar.add(fileMenu);
         menubar.add(netMenu);
@@ -2777,14 +2795,14 @@ public class LogFilterMain extends JFrame implements INotiEvent, BaseLogTable.Ba
         packageViewDialog.setVisible(true);
     }
 
-    private void openActivitiesView() {
+    private void openDumpsysView(String cmd) {
         String title = "Running Tasks";
         String deviceID = null;
         if (m_selectedDevice != null) {
             title = m_selectedDevice.toString();
             deviceID = m_selectedDevice.code;
         }
-        DumpsysViewDialog dumpsysViewDialog = new DumpsysViewDialog(this, title, deviceID, "dumpsys activity activities", new DumpsysViewDialog.DumpsysViewDialogListener() {
+        DumpsysViewDialog dumpsysViewDialog = new DumpsysViewDialog(this, title, deviceID, cmd, new DumpsysViewDialog.DumpsysViewDialogListener() {
 
 
             @Override

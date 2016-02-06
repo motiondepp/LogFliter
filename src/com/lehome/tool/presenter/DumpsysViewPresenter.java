@@ -7,8 +7,7 @@ import com.lehome.tool.view.DumpsysViewDialog;
 
 import javax.swing.*;
 import java.awt.*;
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -32,9 +31,6 @@ public class DumpsysViewPresenter {
 
     public void onRefreshButtonPressed() {
         refreshData();
-    }
-
-    public void onSaveButtonPressed() {
     }
 
     private void refreshData() {
@@ -102,6 +98,20 @@ public class DumpsysViewPresenter {
         } catch (Exception e) {
             T.e("e = " + e);
             return null;
+        }
+    }
+
+    public void saveDumpsysInfoToFile(File file) {
+        JTable mainTable = mDumpsysViewDialog.getMainTable();
+        try {
+            FileWriter fos = new FileWriter(file);
+            for (int nIndex = 0; nIndex < mainTable.getRowCount(); nIndex++) {
+                String info = (String) mainTable.getValueAt(nIndex, 0);
+                fos.write(info);
+                fos.write("\n");
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 

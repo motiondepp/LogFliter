@@ -11,6 +11,7 @@ import javax.swing.event.DocumentListener;
 import javax.swing.table.*;
 import java.awt.*;
 import java.awt.event.*;
+import java.io.File;
 import java.util.StringTokenizer;
 
 /**
@@ -57,12 +58,7 @@ public class DumpsysViewDialog extends JDialog implements ActionListener {
         });
         buttonPanel.add(mRefreshButton);
         mSaveButton = new JButton("Save");
-        mSaveButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                mDumpsysViewPresenter.onSaveButtonPressed();
-            }
-        });
+        mSaveButton.addActionListener(mSaveButtonActionlistener);
         buttonPanel.add(mSaveButton);
         actionPanel.add(buttonPanel, BorderLayout.EAST);
 
@@ -198,6 +194,17 @@ public class DumpsysViewDialog extends JDialog implements ActionListener {
     public void actionPerformed(ActionEvent arg0) {
         copySelectedRows();
     }
+
+    private ActionListener mSaveButtonActionlistener = new ActionListener() {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            FileDialog fd = new FileDialog(DumpsysViewDialog.this, "File Save", FileDialog.SAVE);
+            fd.setVisible(true);
+            if (fd.getFile() != null) {
+                mDumpsysViewPresenter.saveDumpsysInfoToFile(new File(fd.getDirectory() + fd.getFile()));
+            }
+        }
+    };
 
     private DocumentListener mSearchDocumentListener = new DocumentListener() {
         @Override
