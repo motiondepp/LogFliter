@@ -5,6 +5,7 @@ import com.lehome.tool.annotation.FieldSaveState;
 import com.lehome.tool.annotation.StateSaver;
 import com.lehome.tool.annotation.TextFieldSaveState;
 import com.lehome.tool.diff.DiffService;
+import com.lehome.tool.view.DumpsysViewDialog;
 import com.lehome.tool.view.PackageViewDialog;
 
 import javax.swing.*;
@@ -367,6 +368,15 @@ public class LogFilterMain extends JFrame implements INotiEvent, BaseLogTable.Ba
             }
         });
         viewMenu.add(packagesMenuItem);
+
+        JMenuItem ActivitiesMenuItem = new JMenuItem("Show Running Activities");
+        ActivitiesMenuItem.setToolTipText("show running activities on current android device");
+        ActivitiesMenuItem.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent event) {
+                mainFrame.openActivitiesView();
+            }
+        });
+        viewMenu.add(ActivitiesMenuItem);
 
         menubar.add(fileMenu);
         menubar.add(netMenu);
@@ -2652,6 +2662,9 @@ public class LogFilterMain extends JFrame implements INotiEvent, BaseLogTable.Ba
     private KeyEventDispatcher mKeyEventDispatcher = new KeyEventDispatcher() {
         @Override
         public boolean dispatchKeyEvent(KeyEvent e) {
+            if (!LogFilterMain.this.isFocused()) {
+                return false;
+            }
             boolean altPressed = ((e.getModifiers() & InputEvent.ALT_MASK) == InputEvent.ALT_MASK);
             boolean ctrlPressed = ((e.getModifiers() & InputEvent.CTRL_MASK) == InputEvent.CTRL_MASK);
             switch (e.getKeyCode()) {
@@ -2762,6 +2775,30 @@ public class LogFilterMain extends JFrame implements INotiEvent, BaseLogTable.Ba
         });
         packageViewDialog.setModal(false);
         packageViewDialog.setVisible(true);
+    }
+
+    private void openActivitiesView() {
+        String title = "Running Tasks";
+        String deviceID = null;
+        if (m_selectedDevice != null) {
+            title = m_selectedDevice.toString();
+            deviceID = m_selectedDevice.code;
+        }
+        DumpsysViewDialog dumpsysViewDialog = new DumpsysViewDialog(this, title, deviceID, "dumpsys activity activities", new DumpsysViewDialog.DumpsysViewDialogListener() {
+
+
+            @Override
+            public void onRowSingleClick(String value) {
+
+            }
+
+            @Override
+            public void onRowDoubleClick(String value) {
+
+            }
+        });
+        dumpsysViewDialog.setModal(false);
+        dumpsysViewDialog.setVisible(true);
     }
 
     private void openFileBrowserToSave(FileType type) {

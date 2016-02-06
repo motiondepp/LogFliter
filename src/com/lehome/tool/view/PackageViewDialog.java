@@ -58,7 +58,7 @@ public class PackageViewDialog extends JDialog {
     private void initMainTable(Container c) {
         mPackageViewTableModel = new PackageViewTableModel();
         mMainTable = new JTable(mPackageViewTableModel);
-        mMainTable.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
+        mMainTable.setAutoResizeMode(JTable.AUTO_RESIZE_LAST_COLUMN);
         mMainTable.getTableHeader().setReorderingAllowed(false);
         mMainTable.setOpaque(false);
         mMainTable.setAutoscrolls(false);
