@@ -2387,6 +2387,9 @@ public class LogFilterMain extends JFrame implements INotiEvent, BaseLogTable.Ba
                 m_nChangedFilter = STATUS_CHANGE;
                 runFilter();
                 break;
+            case EVENT_CHANGE_FILTER_SHOW_PID:
+                m_tfShowPid.setText(getLogTable().GetFilterShowPid());
+                break;
             case EVENT_CHANGE_FILTER_SHOW_TAG:
                 m_tfShowTag.setText(getLogTable().GetFilterShowTag());
                 break;
@@ -2834,16 +2837,16 @@ public class LogFilterMain extends JFrame implements INotiEvent, BaseLogTable.Ba
 
             @Override
             public void onFliterPidSelected(String value) {
-                String tagShow = m_tbLogTable.m_strTagShow;
-                if (tagShow.contains("|" + value)) {
-                    tagShow = tagShow.replace("|" + value, "");
-                } else if (tagShow.contains(value)) {
-                    tagShow = tagShow.replace(value, "");
+                String pidShow = m_tbLogTable.m_strPidShow;
+                if (pidShow.contains("|" + value)) {
+                    pidShow = pidShow.replace("|" + value, "");
+                } else if (pidShow.contains(value)) {
+                    pidShow = pidShow.replace(value, "");
                 } else {
-                    tagShow += "|" + value;
+                    pidShow += "|" + value;
                 }
-                m_tbLogTable.m_strTagShow = tagShow;
-                LogFilterMain.this.notiEvent(new INotiEvent.EventParam(INotiEvent.TYPE.EVENT_CHANGE_FILTER_SHOW_TAG));
+                m_tbLogTable.m_strPidShow = pidShow;
+                LogFilterMain.this.notiEvent(new INotiEvent.EventParam(INotiEvent.TYPE.EVENT_CHANGE_FILTER_SHOW_PID));
             }
         });
         packageViewDialog.setModal(false);
